@@ -1,0 +1,19 @@
+{
+  "name": "МАГНАТ.UA — Українська Економічна Онлайн-Стратегія",
+  "short_name": "МАГНАТ.UA",
+  "description": "Перша преміальна українська економічна онлайн-гра нового покоління.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#070b14",
+  "theme_color": "#0A0E17",
+  "icons": [
+    {
+      "src": "/images/magnat-crest-icon.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any"
+    }
+  ]
+}
+
