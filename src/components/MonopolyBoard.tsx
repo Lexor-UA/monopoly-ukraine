@@ -456,7 +456,8 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
   const isUltraCompact = boardWidth < 450;
   const isPhoneBoard = boardWidth < 540;
   const isCompactBoard = boardWidth < 680;
-  const isWideBoard = boardWidth >= 860;
+  const isLaptopBoard = !isCompactBoard && boardWidth < 960;
+  const isWideBoard = boardWidth >= 900;
 
   const activePlayer: Player | undefined =
     gameState.players[gameState.turnIndex];
@@ -567,10 +568,12 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
 
   const recentLogs = gameState.logs.slice(0, isCompactBoard ? 2 : 3);
 
-  const gridGap = isUltraCompact ? '2px' : isCompactBoard ? '3.5px' : '5px';
+  const gridGap = isUltraCompact ? '2px' : isCompactBoard ? '3.5px' : isLaptopBoard ? '4px' : '5px';
   const gridCols = isPhoneBoard
-    ? '1.46fr repeat(9, 1fr) 1.46fr'
-    : '1.64fr repeat(9, 1fr) 1.64fr';
+    ? '1.42fr repeat(9, 1fr) 1.42fr'
+    : isCompactBoard || isLaptopBoard
+      ? '1.45fr repeat(9, 1fr) 1.45fr'
+      : '1.60fr repeat(9, 1fr) 1.60fr';
   const gridRows = isPhoneBoard
     ? '1.42fr repeat(9, 1fr) 1.42fr'
     : '1.36fr repeat(9, 1fr) 1.36fr';
@@ -590,13 +593,15 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
         className={`${
           boardSizePx
             ? 'shrink-0'
-            : 'w-full max-w-[min(1320px,calc((100dvh-16px)*1.12))] xl:max-h-[calc(100dvh-16px)] aspect-square xl:aspect-[1.12/1]'
+            : 'w-full max-w-[min(1340px,calc((100dvh-14px)*1.20))] lg:max-h-[calc(100dvh-14px)] aspect-square lg:aspect-[1.18/1] xl:aspect-[1.20/1]'
         } ${
           isPhoneBoard
             ? 'rounded-[16px] p-1'
             : isCompactBoard
               ? 'rounded-[22px] p-1.5'
-              : 'rounded-[28px] p-2.5 sm:p-3'
+              : isLaptopBoard
+                ? 'rounded-[24px] p-2'
+                : 'rounded-[28px] p-2.5 sm:p-3'
         } board-luxury-frame relative select-none`}
         style={{
           ...(boardSizePx
@@ -1269,13 +1274,17 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
               {pos.side === 'corner' ? (
                 <div
                   className={`relative z-[4] w-full h-full flex flex-col justify-between ${
-                    isPhoneBoard ? 'p-0.5' : 'p-1.5'
+                    isPhoneBoard
+                      ? 'p-0.5'
+                      : isCompactBoard || isLaptopBoard
+                        ? 'p-1'
+                        : 'p-1.5'
                   } text-white overflow-hidden`}
                 >
                   <div className="flex items-start justify-start">
                     <BrandEmblem
                       brandKey={cell.brandKey}
-                      size={isPhoneBoard ? 'xs' : 'sm'}
+                      size={isPhoneBoard || isCompactBoard || isLaptopBoard ? 'xs' : 'sm'}
                     />
                   </div>
 
@@ -1291,15 +1300,21 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
                           : isPhoneBoard
                             ? 'text-[7.8px]'
                             : isCompactBoard
-                              ? 'text-[9px]'
-                              : 'text-[10.5px] 2xl:text-xs'
+                              ? 'text-[8.4px] tracking-[-0.015em]'
+                              : isLaptopBoard
+                                ? 'text-[9.2px] tracking-[-0.015em]'
+                                : 'text-[10.5px] 2xl:text-xs'
                       } leading-tight max-w-full truncate`}
                     >
                       {cell.shortName}
                     </div>
                     {cell.subtitle && !isPhoneBoard && !hasStationaryPlayersOnCell && (
                       <div
-                        className={`text-[7.5px] 2xl:text-[9px] font-extrabold leading-tight px-1.5 py-0.5 rounded-full backdrop-blur-xs max-w-full truncate ${
+                        className={`${
+                          isCompactBoard || isLaptopBoard
+                            ? 'text-[6.8px] xl:text-[7.2px] px-1 py-[1px] tracking-[-0.02em]'
+                            : 'text-[8px] 2xl:text-[9px] px-1.5 py-0.5'
+                        } font-extrabold leading-tight rounded-full backdrop-blur-xs max-w-full truncate ${
                           cell.index === 0
                             ? 'bg-emerald-500/45 text-emerald-50 border border-emerald-300/60'
                             : cell.index === 20
@@ -1321,46 +1336,40 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
                     pos.side === 'left'
                       ? isPhoneBoard
                         ? `pl-1 ${hasInnerSectorBand ? 'pr-[8px]' : 'pr-1.5'} py-0.5`
-                        : `pl-2 ${
+                        : `${isCompactBoard || isLaptopBoard ? 'pl-1.5' : 'pl-2'} ${
                             hasInnerSectorBand
                               ? isCompactBoard
-                                ? 'pr-[13.5px]'
+                                ? 'pr-[13px]'
                                 : isWideBoard
-                                  ? 'pr-[18px]'
-                                  : 'pr-[16.5px]'
-                              : 'pr-2'
+                                  ? 'pr-[17.5px]'
+                                  : 'pr-[15.5px]'
+                              : isCompactBoard || isLaptopBoard
+                                ? 'pr-1.5'
+                                : 'pr-2'
                           } pt-1 pb-1`
                       : isPhoneBoard
                         ? `pr-1 ${hasInnerSectorBand ? 'pl-[8px]' : 'pl-1.5'} py-0.5`
-                        : `pr-2 ${
+                        : `${isCompactBoard || isLaptopBoard ? 'pr-1.5' : 'pr-2'} ${
                             hasInnerSectorBand
                               ? isCompactBoard
-                                ? 'pl-[13.5px]'
+                                ? 'pl-[13px]'
                                 : isWideBoard
-                                  ? 'pl-[18px]'
-                                  : 'pl-[16.5px]'
-                              : 'pl-2'
+                                  ? 'pl-[17.5px]'
+                                  : 'pl-[15.5px]'
+                              : isCompactBoard || isLaptopBoard
+                                ? 'pl-1.5'
+                                : 'pl-2'
                           } pt-1 pb-1`
                   }`}
                 >
-                  {/* Bottom Full-Width Crisp Caption + Price / Owned Rent Pill (Stacked on compact/mobile boards so titles are never crushed to 1 letter!) */}
+                  {/* Bottom Full-Width Crisp Caption Stacked Above Price / Owned Rent Pill — Guarantees Full Company Names on Every Screen! */}
                   <div
-                    className={
-                      isCompactBoard
-                        ? `flex flex-col gap-[1px] w-full min-w-0 ${
-                            pos.side === 'right' ? 'items-end' : 'items-start'
-                          }`
-                        : `flex items-end justify-between gap-1 w-full min-w-0 ${
-                            pos.side === 'right'
-                              ? 'flex-row-reverse'
-                              : 'flex-row'
-                          }`
-                    }
+                    className={`flex flex-col gap-[1.5px] w-full min-w-0 ${
+                      pos.side === 'right' ? 'items-end' : 'items-start'
+                    }`}
                   >
                     <div
-                      className={`${
-                        isCompactBoard ? 'w-full' : 'min-w-0 flex-1'
-                      } board-card-caption ${
+                      className={`w-full board-card-caption ${
                         pos.side === 'right' ? 'text-right' : 'text-left'
                       } ${
                         isUltraCompact
@@ -1368,8 +1377,10 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
                           : isPhoneBoard
                             ? 'text-[7.2px] leading-[1.05]'
                             : isCompactBoard
-                              ? 'text-[8.3px] leading-[1.06]'
-                              : 'text-[9.5px] 2xl:text-[10.5px] leading-[1.1]'
+                              ? 'text-[8px] leading-[1.05] tracking-[-0.02em]'
+                              : isLaptopBoard
+                                ? 'text-[8.6px] leading-[1.06] tracking-[-0.02em]'
+                                : 'text-[9.8px] 2xl:text-[10.8px] leading-[1.08]'
                       } font-bold text-white truncate`}
                     >
                       {cell.shortName}
@@ -1383,8 +1394,8 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
                             ? 'text-[5.8px] px-0.5'
                             : isPhoneBoard
                               ? 'text-[6.5px] px-1'
-                              : isCompactBoard
-                                ? 'text-[7.5px] px-1'
+                              : isCompactBoard || isLaptopBoard
+                                ? 'text-[7.5px] px-1 py-[0.5px] tracking-[-0.015em]'
                                 : 'text-[8px] 2xl:text-[8.5px] px-1.5 py-[0.5px]'
                         } font-extrabold tabular-nums whitespace-nowrap rounded border ${
                           prop?.isMortgaged
@@ -1417,9 +1428,9 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
                             ? 'text-[5.8px] px-0.5'
                             : isPhoneBoard
                               ? 'text-[6.5px] px-1'
-                              : isCompactBoard
-                                ? 'text-[7.5px] px-1'
-                                : 'text-[8.5px] 2xl:text-[9px] px-1'
+                              : isCompactBoard || isLaptopBoard
+                                ? 'text-[7.6px] px-1 py-[0.5px] tracking-[-0.015em]'
+                                : 'text-[8.5px] 2xl:text-[9px] px-1.5 py-[0.5px]'
                         } font-extrabold tabular-nums whitespace-nowrap rounded ${
                           cell.taxAmount
                             ? 'bg-rose-950/82 text-rose-200 border border-rose-400/35'
@@ -1435,10 +1446,14 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
                           className={`shrink-0 ${
                             isPhoneBoard
                               ? 'text-[6.2px] px-0.5'
-                              : 'text-[7.5px] px-1'
+                              : isCompactBoard || isLaptopBoard
+                                ? 'text-[7.2px] px-1 py-[0.5px] tracking-[-0.015em]'
+                                : 'text-[7.8px] px-1.5 py-[0.5px]'
                           } font-bold text-slate-100 bg-slate-950/75 border border-white/15 rounded whitespace-nowrap`}
                         >
-                          {cell.subtitle}
+                          {cell.type === 'event_unity' && (isCompactBoard || isLaptopBoard)
+                            ? 'Шанс'
+                            : cell.subtitle}
                         </span>
                       )
                     )}
@@ -1451,18 +1466,20 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
                     pos.side === 'bottom'
                       ? isPhoneBoard
                         ? 'pt-1.5 pb-1 px-0.5'
-                        : 'pt-2 pb-1.5 px-1'
+                        : isCompactBoard || isLaptopBoard
+                          ? 'pt-1.5 pb-1 px-[2px]'
+                          : 'pt-2 pb-1.5 px-1'
                       : isPhoneBoard
                         ? `pt-0.5 ${hasInnerSectorBand ? 'pb-[8px]' : 'pb-1'} px-0.5`
                         : `pt-1 ${
                             hasInnerSectorBand
                               ? isCompactBoard
-                                ? 'pb-[13px]'
+                                ? 'pb-[12.5px]'
                                 : isWideBoard
                                   ? 'pb-[17.5px]'
-                                  : 'pb-[16px]'
-                              : 'pb-1.5'
-                          } px-1`
+                                  : 'pb-[15.5px]'
+                              : 'pb-1'
+                          } ${isCompactBoard || isLaptopBoard ? 'px-[2px]' : 'px-1'}`
                   }`}
                 >
                   {/* Bottom Crisp Title + Single-Line Price / Owned Rent Pill */}
@@ -1470,12 +1487,14 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
                     <div
                       className={`w-full board-card-caption ${
                         isUltraCompact
-                          ? 'text-[6px] leading-[1.04]'
+                          ? 'text-[6px] leading-[1.03]'
                           : isPhoneBoard
-                            ? 'text-[6.8px] leading-[1.06]'
+                            ? 'text-[6.8px] leading-[1.05]'
                             : isCompactBoard
-                              ? 'text-[8px] leading-[1.08]'
-                              : 'text-[9.5px] 2xl:text-[10px] leading-[1.08]'
+                              ? 'text-[7.5px] leading-[1.04] tracking-[-0.025em]'
+                              : isLaptopBoard
+                                ? 'text-[8.1px] leading-[1.05] tracking-[-0.02em]'
+                                : 'text-[9.5px] 2xl:text-[10px] leading-[1.08]'
                       } font-bold text-white line-clamp-2 overflow-hidden text-ellipsis`}
                     >
                       {cell.shortName}
@@ -1488,8 +1507,8 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
                             ? 'text-[5.8px] px-0.5'
                             : isPhoneBoard
                               ? 'text-[6.5px] px-1'
-                              : isCompactBoard
-                                ? 'text-[7.5px] px-1'
+                              : isCompactBoard || isLaptopBoard
+                                ? 'text-[7.4px] px-1 py-[0.5px] tracking-[-0.02em]'
                                 : 'text-[8px] 2xl:text-[8.5px] px-1.5 py-[0.5px]'
                         } font-extrabold tabular-nums whitespace-nowrap max-w-full truncate rounded border ${
                           prop?.isMortgaged
@@ -1523,8 +1542,8 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
                               ? 'text-[5.8px] px-0.5'
                               : isPhoneBoard
                                 ? 'text-[6.5px] px-1'
-                                : isCompactBoard
-                                  ? 'text-[7.5px] px-1'
+                                : isCompactBoard || isLaptopBoard
+                                  ? 'text-[7.5px] px-[3.5px] py-[0.5px] tracking-[-0.02em]'
                                   : 'text-[8px] 2xl:text-[8.5px] px-1'
                           } font-extrabold tabular-nums whitespace-nowrap max-w-full truncate rounded ${
                             cell.taxAmount
@@ -1534,7 +1553,10 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
                                 : 'bg-slate-950/75 text-slate-100 border border-white/15'
                           }`}
                         >
-                          {priceDisplay ?? cell.subtitle ?? ''}
+                          {priceDisplay ??
+                            (cell.type === 'event_unity'
+                              ? 'Шанс'
+                              : cell.subtitle ?? '')}
                         </div>
                       )
                     )}
@@ -1642,10 +1664,12 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
                           : isPhoneBoard
                             ? 24
                             : isCompactBoard
-                              ? 30
-                              : isLargeDesktopBoard
-                                ? 41
-                                : 37;
+                              ? 29
+                              : isLaptopBoard
+                                ? 33
+                                : isLargeDesktopBoard
+                                  ? 41
+                                  : 37;
                       } else if (groupCount === 2) {
                         headSize = soloSideHeadSize;
                         const dx = Math.min(
@@ -1654,29 +1678,34 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
                         );
                         cx = baseCx + (slotIdx - 0.5) * dx;
                       } else {
-                        // True Interleaved W / Chevron Amphitheater on Corner Cells (zero front-over-back plaque collision!)
+                        // True Interleaved W / Chevron Amphitheater on Corner Cells (zero front-over-back plaque collision & leaves bottom title visible!)
                         headSize = isUltraCompact
                           ? 15
                           : isPhoneBoard
                             ? 18
                             : isCompactBoard
-                              ? 23
-                              : isLargeDesktopBoard
-                                ? 30
-                                : 27;
+                              ? 21
+                              : isLaptopBoard
+                                ? 23
+                                : isLargeDesktopBoard
+                                  ? 30
+                                  : 27;
+
+                        const cornerBackY = isCompactBoard || isLaptopBoard ? 0.45 : 0.49;
+                        const cornerFrontY = isCompactBoard || isLaptopBoard ? 0.72 : 0.79;
 
                         if (groupCount === 3) {
                           if (slotIdx === 0) {
                             rowLayer = 0;
                             cx = box.left + box.width * 0.52;
-                            by = box.top + box.height * 0.49;
+                            by = box.top + box.height * cornerBackY;
                           } else {
                             rowLayer = 2;
                             const fIdx = slotIdx - 1;
                             cx =
                               box.left +
                               box.width * (fIdx === 0 ? 0.23 : 0.8);
-                            by = box.top + box.height * 0.8;
+                            by = box.top + box.height * cornerFrontY;
                           }
                         } else if (groupCount === 4) {
                           // W-Formation: Back row inner (38%, 68%), Front row wide outer (21%, 81%)
@@ -1685,14 +1714,14 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
                             cx =
                               box.left +
                               box.width * (slotIdx === 0 ? 0.38 : 0.68);
-                            by = box.top + box.height * 0.51;
+                            by = box.top + box.height * cornerBackY;
                           } else {
                             rowLayer = 2;
                             const fIdx = slotIdx - 2;
                             cx =
                               box.left +
                               box.width * (fIdx === 0 ? 0.21 : 0.81);
-                            by = box.top + box.height * 0.80;
+                            by = box.top + box.height * cornerFrontY;
                           }
                         } else if (groupCount === 5) {
                           // Interleaved 2-back (36%, 67%) + 3-front (18%, 51%, 83%)
@@ -1701,13 +1730,13 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
                             cx =
                               box.left +
                               box.width * (slotIdx === 0 ? 0.36 : 0.67);
-                            by = box.top + box.height * 0.48;
+                            by = box.top + box.height * cornerBackY;
                           } else {
                             rowLayer = 2;
                             const fIdx = slotIdx - 2;
                             const frontXs = [0.18, 0.51, 0.83];
                             cx = box.left + box.width * (frontXs[fIdx] ?? 0.51);
-                            by = box.top + box.height * 0.81;
+                            by = box.top + box.height * cornerFrontY;
                           }
                         } else {
                           // 6 Players: Staggered 3-back (31%, 57%, 83%) + 3-front (18%, 44%, 70%)
@@ -1715,13 +1744,13 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
                             rowLayer = 0;
                             const backXs = [0.31, 0.57, 0.83];
                             cx = box.left + box.width * (backXs[slotIdx] ?? 0.57);
-                            by = box.top + box.height * 0.47;
+                            by = box.top + box.height * cornerBackY;
                           } else {
                             rowLayer = 2;
                             const fIdx = slotIdx - 3;
                             const frontXs = [0.18, 0.44, 0.7];
                             cx = box.left + box.width * (frontXs[fIdx] ?? 0.44);
-                            by = box.top + box.height * 0.81;
+                            by = box.top + box.height * cornerFrontY;
                           }
                         }
                       }
@@ -1985,8 +2014,8 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
               )}
             </div>
 
-            {/* 2. Center Dynamic Island HUD: Brand Crest at Rest -> Balanced Transaction Capsule on Events */}
-            {boardWidth >= 560 && (
+            {/* 2. Center Dynamic Island HUD: Transaction Capsule on Events (or Brand Crest on Wide Desktop >= 940px) */}
+            {boardWidth >= 560 && (Boolean(visibleToast) || boardWidth >= 940) && (
               <div className="flex-1 min-w-0 flex items-center justify-center px-1">
                 <AnimatePresence mode="wait" initial={false}>
                   {visibleToast ? (
@@ -1997,8 +2026,8 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
                       exit={{ opacity: 0, y: -4, scale: 0.97 }}
                       transition={{ duration: 0.2, ease: 'easeOut' }}
                       className={`max-w-[430px] 2xl:max-w-[500px] min-w-0 flex items-center ${
-                        isCompactBoard
-                          ? 'gap-2 px-3 py-1.5 min-h-[42px]'
+                        isCompactBoard || isLaptopBoard
+                          ? 'gap-2 px-2.5 py-1 min-h-[40px]'
                           : 'gap-2.5 2xl:gap-3 px-3.5 2xl:px-4 py-1.5 min-h-[48px] 2xl:min-h-[54px]'
                       } rounded-2xl bg-white/95 dark:bg-slate-950/88 backdrop-blur-md border shadow-[0_10px_28px_-8px_rgba(0,0,0,0.55)] ${
                         visibleToast.variant === 'income'
@@ -2012,8 +2041,8 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
                     >
                       <span
                         className={`${
-                          isCompactBoard
-                            ? 'w-7 h-7 rounded-lg'
+                          isCompactBoard || isLaptopBoard
+                            ? 'w-6 h-6 rounded-lg'
                             : 'w-8 h-8 2xl:w-9 2xl:h-9 rounded-xl'
                         } flex items-center justify-center shrink-0 border ${
                           visibleToast.variant === 'income'
@@ -2026,21 +2055,21 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
                         }`}
                       >
                         {visibleToast.variant === 'income' ? (
-                          <TrendingUp className="w-4 h-4" />
+                          <TrendingUp className="w-3.5 h-3.5" />
                         ) : visibleToast.variant === 'zsu' ? (
-                          <Shield className="w-4 h-4" />
+                          <Shield className="w-3.5 h-3.5" />
                         ) : visibleToast.variant === 'expense' ? (
-                          <Zap className="w-4 h-4" />
+                          <Zap className="w-3.5 h-3.5" />
                         ) : (
-                          <Sparkles className="w-4 h-4" />
+                          <Sparkles className="w-3.5 h-3.5" />
                         )}
                       </span>
 
                       <div className="min-w-0 leading-tight text-left">
                         <div
                           className={`${
-                            isCompactBoard
-                              ? 'text-[11.5px]'
+                            isCompactBoard || isLaptopBoard
+                              ? 'text-[11px]'
                               : 'text-xs 2xl:text-[13.5px]'
                           } font-extrabold text-slate-900 dark:text-white truncate`}
                         >
@@ -2048,8 +2077,8 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
                         </div>
                         <div
                           className={`${
-                            isCompactBoard
-                              ? 'text-[10px]'
+                            isCompactBoard || isLaptopBoard
+                              ? 'text-[9.5px]'
                               : 'text-[10.5px] 2xl:text-[11.5px] mt-0.5'
                           } font-semibold text-slate-500 dark:text-slate-300/85 truncate`}
                         >
@@ -2059,8 +2088,8 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
 
                       <span
                         className={`shrink-0 ${
-                          isCompactBoard
-                            ? 'px-2 py-0.5 rounded-lg text-[11px]'
+                          isCompactBoard || isLaptopBoard
+                            ? 'px-2 py-0.5 rounded-lg text-[10.5px]'
                             : 'px-2.5 2xl:px-3 py-1 rounded-xl text-xs 2xl:text-[13px]'
                         } font-display font-extrabold tabular-nums whitespace-nowrap border ${
                           visibleToast.variant === 'income'
@@ -2082,36 +2111,28 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.97 }}
                       transition={{ duration: 0.18 }}
-                      className={`flex items-center ${
-                        isCompactBoard
-                          ? 'gap-2 px-3 py-1.5 min-h-[42px]'
-                          : 'gap-2.5 2xl:gap-3 px-4 2xl:px-5 py-1.5 min-h-[48px] 2xl:min-h-[54px]'
-                      } rounded-2xl bg-white/94 dark:bg-slate-950/86 backdrop-blur-md border border-slate-200/90 dark:border-amber-400/35 text-slate-900 dark:text-white shadow-[0_10px_28px_-8px_rgba(0,0,0,0.55)] shrink-0`}
+                      className="flex items-center gap-2.5 2xl:gap-3 px-4 2xl:px-5 py-1.5 min-h-[48px] 2xl:min-h-[54px] rounded-2xl bg-white/94 dark:bg-slate-950/86 backdrop-blur-md border border-slate-200/90 dark:border-amber-400/35 text-slate-900 dark:text-white shadow-[0_10px_28px_-8px_rgba(0,0,0,0.55)] shrink-0"
                     >
-                      <MagnatBrandIcon size={isCompactBoard ? 'xs' : 'sm'} />
-                      <MagnatWordmark size={isCompactBoard ? 'xs' : 'sm'} />
-                      {boardWidth >= 780 && (
+                      <MagnatBrandIcon size="sm" />
+                      <MagnatWordmark size="sm" />
+                      <span className="h-4 w-[1px] bg-slate-300 dark:bg-white/15 mx-0.5" />
+                      <span
+                        title="Зібрано на Оборону України"
+                        className="text-[11.5px] 2xl:text-xs font-extrabold text-amber-600 dark:text-amber-300 flex items-center gap-1.5 tabular-nums whitespace-nowrap"
+                      >
+                        <Shield className="w-3.5 h-3.5 shrink-0" />
+                        <span>{formatMoney(gameState.zsuTotalDonated)}</span>
+                      </span>
+                      {gameState.settings.karpatyBonusEnabled && (
                         <>
                           <span className="h-4 w-[1px] bg-slate-300 dark:bg-white/15 mx-0.5" />
                           <span
-                            title="Зібрано на Оборону України"
-                            className="text-[11.5px] 2xl:text-xs font-extrabold text-amber-600 dark:text-amber-300 flex items-center gap-1.5 tabular-nums whitespace-nowrap"
+                            title="Регіональний бонусний банк у Карпатах"
+                            className="text-[11.5px] 2xl:text-xs font-extrabold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 tabular-nums whitespace-nowrap"
                           >
-                            <Shield className="w-3.5 h-3.5 shrink-0" />
-                            <span>{formatMoney(gameState.zsuTotalDonated)}</span>
+                            <TrendingUp className="w-3.5 h-3.5 shrink-0" />
+                            <span>{formatMoney(gameState.karpatyFund)}</span>
                           </span>
-                          {gameState.settings.karpatyBonusEnabled && (
-                            <>
-                              <span className="h-4 w-[1px] bg-slate-300 dark:bg-white/15 mx-0.5" />
-                              <span
-                                title="Регіональний бонусний банк у Карпатах"
-                                className="text-[11.5px] 2xl:text-xs font-extrabold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 tabular-nums whitespace-nowrap"
-                              >
-                                <TrendingUp className="w-3.5 h-3.5 shrink-0" />
-                                <span>{formatMoney(gameState.karpatyFund)}</span>
-                              </span>
-                            </>
-                          )}
                         </>
                       )}
                     </motion.div>

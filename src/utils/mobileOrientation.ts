@@ -2,10 +2,30 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 export type LandscapeRotationDir = 'cw' | 'ccw';
 
+function hasCoarseTouchPointer(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return (
+      window.matchMedia?.('(pointer: coarse)').matches ||
+      navigator.maxTouchPoints > 1
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function isLikelyMobilePhoneViewport(vw: number, vh: number): boolean {
   const shortest = Math.min(vw, vh);
   const longest = Math.max(vw, vh);
-  return shortest < 640 && longest < 1100;
+  if (vw < vh) {
+    // Portrait phone (or DevTools mobile emulator)
+    return vw < 640 && longest < 1100;
+  }
+  // Landscape phone: either very compact height (<500px) or touch device (<600px height & <1024px width)
+  return (
+    (shortest < 500 && longest < 1024) ||
+    (hasCoarseTouchPointer() && shortest < 600 && longest < 1024)
+  );
 }
 
 /**
@@ -217,7 +237,10 @@ export function useMobileViewportAndOrientation(isInBoardMatch: boolean) {
 
   const isMobilePhone = isLikelyMobilePhoneViewport(metrics.vw, metrics.vh);
   const isCompactLandscapeTablet =
-    !metrics.isPhysicalPortrait && metrics.vh < 560 && metrics.vw < 1280;
+    !metrics.isPhysicalPortrait &&
+    hasCoarseTouchPointer() &&
+    metrics.vh < 560 &&
+    metrics.vw < 1024;
 
   const isCssRotatedLandscape = Boolean(
     isInBoardMatch &&

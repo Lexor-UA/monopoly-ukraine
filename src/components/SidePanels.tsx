@@ -350,28 +350,28 @@ export const PlayersCardsList: React.FC<{
               )}
             </AnimatePresence>
 
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="relative shrink-0">
-                  <TokenAvatar
-                    token={p.token}
-                    color={p.color}
-                    size={compact ? 34 : 40}
-                  />
-                  <span
-                    className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full text-[8.5px] font-black flex items-center justify-center border ${
-                      rank === 1
-                        ? 'bg-amber-400 text-slate-950 border-white dark:border-slate-950'
-                        : 'bg-slate-200 text-slate-800 border-white dark:bg-slate-900 dark:text-slate-200 dark:border-white/20'
-                    }`}
-                  >
-                    #{rank}
-                  </span>
-                </div>
+            <div className="flex items-start gap-2.5">
+              <div className="relative shrink-0 mt-0.5">
+                <TokenAvatar
+                  token={p.token}
+                  color={p.color}
+                  size={compact ? 34 : 40}
+                />
+                <span
+                  className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full text-[8.5px] font-black flex items-center justify-center border ${
+                    rank === 1
+                      ? 'bg-amber-400 text-slate-950 border-white dark:border-slate-950'
+                      : 'bg-slate-200 text-slate-800 border-white dark:bg-slate-900 dark:text-slate-200 dark:border-white/20'
+                  }`}
+                >
+                  #{rank}
+                </span>
+              </div>
 
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1 flex-wrap">
-                    <span className="font-extrabold text-xs sm:text-[13px] truncate max-w-[110px] 2xl:max-w-[140px]">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-1.5 min-w-0">
+                  <div className="flex items-center gap-1 flex-wrap min-w-0">
+                    <span className="font-extrabold text-xs sm:text-[13px] truncate max-w-[140px] 2xl:max-w-[175px]">
                       {p.name}
                     </span>
                     {isMe && (
@@ -427,21 +427,27 @@ export const PlayersCardsList: React.FC<{
                     )}
                   </div>
 
-                  <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-[var(--text-muted)] font-semibold tabular-nums min-w-0">
-                    <span className="whitespace-nowrap">
+                  <div className="font-display font-extrabold text-xs 2xl:text-sm tabular-nums whitespace-nowrap shrink-0">
+                    {formatMoney(p.money)}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-1.5 mt-1 min-w-0">
+                  <div className="flex items-center gap-1 text-[9.5px] 2xl:text-[10px] text-[var(--text-muted)] font-semibold tabular-nums min-w-0">
+                    <span className="whitespace-nowrap shrink-0">
                       {p.isBankrupt
                         ? 'Банкрут'
-                        : `Кап.: ${formatMoney(netWorth)}`}
+                        : `Капітал: ${formatMoney(netWorth)}`}
                     </span>
                     {!p.isBankrupt && (
                       <>
-                        <span>•</span>
+                        <span className="shrink-0">•</span>
                         <button
                           onClick={() => {
                             sound.playClick();
                             onSelectCell(p.position);
                           }}
-                          className="inline-flex items-center gap-0.5 text-[var(--text-secondary)] hover:text-sky-400 truncate max-w-[125px] 2xl:max-w-[165px] cursor-pointer"
+                          className="inline-flex items-center gap-0.5 text-[var(--text-secondary)] hover:text-sky-400 truncate min-w-0 cursor-pointer"
                           title={`Позиція: ${currentCell.name}`}
                         >
                           <MapPin className="w-2.5 h-2.5 shrink-0 text-amber-400" />
@@ -452,38 +458,33 @@ export const PlayersCardsList: React.FC<{
                       </>
                     )}
                   </div>
-                </div>
-              </div>
 
-              <div className="text-right shrink-0">
-                <div className="font-display font-extrabold text-xs 2xl:text-sm tabular-nums whitespace-nowrap">
-                  {formatMoney(p.money)}
-                </div>
-                <div className="flex items-center justify-end gap-1 mt-1">
-                  {p.inJail && (
-                    <span className="px-1.5 py-0.2 rounded bg-rose-500/15 text-rose-500 text-[8.5px] font-extrabold whitespace-nowrap">
-                      ⚖️ Ізол.
-                    </span>
-                  )}
-                  {!isMe && !p.isBankrupt && isMyTurn ? (
-                    <button
-                      onClick={() => onOpenTradeWith(p.id)}
-                      className={`px-2 py-0.5 rounded-lg text-[9.5px] font-extrabold flex items-center gap-1 transition cursor-pointer whitespace-nowrap ${
-                        isMyTeammate
-                          ? 'bg-sky-500/20 hover:bg-sky-500 hover:text-slate-950 text-sky-700 dark:text-sky-200 border border-sky-400/40'
-                          : 'bg-blue-600/15 hover:bg-blue-600 hover:text-white text-blue-700 dark:text-sky-300'
-                      }`}
-                    >
-                      <Handshake className="w-3 h-3" />{' '}
-                      {isMyTeammate ? 'Обмін' : 'Угода'}
-                    </button>
-                  ) : (
-                    !p.isBankrupt && (
-                      <span className="text-[9.5px] font-bold text-[var(--text-muted)] whitespace-nowrap">
-                        Активів: {ownedCells.length}
+                  <div className="flex items-center justify-end gap-1 shrink-0">
+                    {p.inJail && (
+                      <span className="px-1.5 py-0.2 rounded bg-rose-500/15 text-rose-500 text-[8.5px] font-extrabold whitespace-nowrap">
+                        ⚖️ Ізолятор
                       </span>
-                    )
-                  )}
+                    )}
+                    {!isMe && !p.isBankrupt && isMyTurn ? (
+                      <button
+                        onClick={() => onOpenTradeWith(p.id)}
+                        className={`px-2 py-0.5 rounded-lg text-[9.5px] font-extrabold flex items-center gap-1 transition cursor-pointer whitespace-nowrap ${
+                          isMyTeammate
+                            ? 'bg-sky-500/20 hover:bg-sky-500 hover:text-slate-950 text-sky-700 dark:text-sky-200 border border-sky-400/40'
+                            : 'bg-blue-600/15 hover:bg-blue-600 hover:text-white text-blue-700 dark:text-sky-300'
+                        }`}
+                      >
+                        <Handshake className="w-3 h-3" />{' '}
+                        {isMyTeammate ? 'Обмін' : 'Угода'}
+                      </button>
+                    ) : (
+                      !p.isBankrupt && (
+                        <span className="text-[9.5px] font-bold text-[var(--text-muted)] whitespace-nowrap">
+                          Активів: {ownedCells.length}
+                        </span>
+                      )
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1067,7 +1068,7 @@ export const SectorsControlGrid: React.FC<{
               let liveRentTag = '';
               if (ow) {
                 if (pr?.isMortgaged) {
-                  liveRentTag = 'Заст.';
+                  liveRentTag = isFourCardGrid ? 'Заст.' : 'Застава';
                 } else if (c.type === 'utility') {
                   const ownedUtils = BOARD_CELLS.filter(
                     (uc) =>
@@ -1084,7 +1085,7 @@ export const SectorsControlGrid: React.FC<{
                   );
                   liveRentTag = isFourCardGrid
                     ? formatMoney(rentVal)
-                    : `Ор. ${formatMoney(rentVal)}`;
+                    : `Оренда ${formatMoney(rentVal)}`;
                 }
               }
 
@@ -1248,21 +1249,21 @@ export const NationalFundsWidget: React.FC<{
         onSelectCell(4);
       }}
       title="Сумарні донати всіх гравців на Сили Оборони за поточний матч"
-      className="flex items-center gap-2 p-1.5 rounded-xl bg-[var(--surface-subtle)]/80 hover:bg-[var(--cell-hover)] border border-[var(--border-glass)] text-left transition cursor-pointer min-w-0"
+      className="flex flex-col justify-between gap-0.5 p-2 rounded-xl bg-[var(--surface-subtle)]/80 hover:bg-[var(--cell-hover)] border border-[var(--border-glass)] text-left transition cursor-pointer min-w-0"
     >
-      <div className="w-8 h-8 rounded-lg bg-amber-500/12 border border-amber-500/25 flex items-center justify-center shrink-0">
-        <Shield className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-      </div>
-      <div className="min-w-0 leading-tight">
-        <div className="text-[9.5px] font-bold text-[var(--text-secondary)] truncate">
+      <div className="flex items-center gap-1.5 min-w-0">
+        <div className="w-5 h-5 rounded-md bg-amber-500/14 border border-amber-500/30 flex items-center justify-center shrink-0">
+          <Shield className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+        </div>
+        <div className="text-[9.5px] 2xl:text-[10px] font-extrabold text-[var(--text-secondary)] truncate">
           Фонд Оборони
         </div>
-        <div className="font-display font-extrabold text-[11px] 2xl:text-xs text-amber-600 dark:text-amber-300 tabular-nums whitespace-nowrap truncate mt-0.5">
-          {formatMoney(gameState.zsuTotalDonated)}
-        </div>
-        <div className="text-[8.5px] font-medium text-[var(--text-muted)] truncate">
-          Донати за матч
-        </div>
+      </div>
+      <div className="font-display font-extrabold text-xs 2xl:text-[13px] text-amber-600 dark:text-amber-300 tabular-nums whitespace-nowrap truncate mt-0.5">
+        {formatMoney(gameState.zsuTotalDonated)}
+      </div>
+      <div className="text-[8.5px] 2xl:text-[9px] font-medium text-[var(--text-muted)] truncate">
+        Донати за матч
       </div>
     </button>
 
@@ -1272,23 +1273,23 @@ export const NationalFundsWidget: React.FC<{
         onSelectCell(20);
       }}
       title="Накопичений бонусний фонд: гравець забирає його, коли стає на клітинку «Карпатський Курорт»"
-      className="flex items-center gap-2 p-1.5 rounded-xl bg-[var(--surface-subtle)]/80 hover:bg-[var(--cell-hover)] border border-[var(--border-glass)] text-left transition cursor-pointer min-w-0"
+      className="flex flex-col justify-between gap-0.5 p-2 rounded-xl bg-[var(--surface-subtle)]/80 hover:bg-[var(--cell-hover)] border border-[var(--border-glass)] text-left transition cursor-pointer min-w-0"
     >
-      <div className="w-8 h-8 rounded-lg bg-emerald-500/12 border border-emerald-500/25 flex items-center justify-center shrink-0">
-        <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-      </div>
-      <div className="min-w-0 leading-tight">
-        <div className="text-[9.5px] font-bold text-[var(--text-secondary)] truncate">
+      <div className="flex items-center gap-1.5 min-w-0">
+        <div className="w-5 h-5 rounded-md bg-emerald-500/14 border border-emerald-500/30 flex items-center justify-center shrink-0">
+          <TrendingUp className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+        </div>
+        <div className="text-[9.5px] 2xl:text-[10px] font-extrabold text-[var(--text-secondary)] truncate">
           Банк «Карпати»
         </div>
-        <div className="font-display font-extrabold text-[11px] 2xl:text-xs text-emerald-600 dark:text-emerald-400 tabular-nums whitespace-nowrap truncate mt-0.5">
-          {gameState.settings.karpatyBonusEnabled
-            ? formatMoney(gameState.karpatyFund)
-            : 'Вимкнено'}
-        </div>
-        <div className="text-[8.5px] font-medium text-[var(--text-muted)] truncate">
-          Бонус на відпочинку
-        </div>
+      </div>
+      <div className="font-display font-extrabold text-xs 2xl:text-[13px] text-emerald-600 dark:text-emerald-400 tabular-nums whitespace-nowrap truncate mt-0.5">
+        {gameState.settings.karpatyBonusEnabled
+          ? formatMoney(gameState.karpatyFund)
+          : 'Вимкнено'}
+      </div>
+      <div className="text-[8.5px] 2xl:text-[9px] font-medium text-[var(--text-muted)] truncate">
+        Бонус у Карпатах
       </div>
     </button>
   </div>
@@ -1864,7 +1865,7 @@ export const LeftPlayersPanel: React.FC<LeftPanelProps> = ({
   };
 
   return (
-    <aside className="hidden xl:flex xl:w-[276px] 2xl:w-[356px] xl:h-full shrink-0 flex-col gap-2 overflow-hidden">
+    <aside className="hidden lg:flex lg:w-[252px] xl:w-[276px] 2xl:w-[356px] lg:h-full shrink-0 flex-col gap-2 overflow-hidden">
       {/* Compact Header Card */}
       <div className="glass-panel rounded-2xl p-2.5 2xl:p-3 flex items-center justify-between gap-1.5 shrink-0">
         <div className="flex items-center gap-2 2xl:gap-2.5 min-w-0">
@@ -2088,14 +2089,14 @@ export const RightInspectorAndChat: React.FC<RightPanelProps> = ({
   const unreadChat = Math.max(0, gameState.chat.length - seenChatCount);
 
   return (
-    <aside className="hidden xl:flex xl:w-[292px] 2xl:w-[380px] xl:h-full shrink-0 flex-col gap-2 overflow-hidden">
+    <aside className="hidden lg:flex lg:w-[264px] xl:w-[292px] 2xl:w-[380px] lg:h-full shrink-0 flex-col gap-2 overflow-hidden">
       {isCompactHeight ? (
         /* COMPACT LAPTOP HEIGHT (<860px): 3-Tab Unified Full-Height Card (Zero Off-Screen Clipping!) */
         <div className="flex-1 min-h-0 glass-panel rounded-2xl p-2.5 flex flex-col overflow-hidden">
           <div className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-[var(--surface-subtle)] border border-[var(--border-glass)] mb-2.5 shrink-0">
             <button
               onClick={() => setCompactTab('inspector')}
-              className={`py-1.5 rounded-lg text-[11px] font-extrabold flex items-center justify-center gap-1 transition cursor-pointer ${
+              className={`py-1.5 rounded-lg text-[10.5px] xl:text-[11px] font-extrabold flex items-center justify-center gap-1 transition cursor-pointer whitespace-nowrap ${
                 compactTab === 'inspector'
                   ? 'bg-blue-600 text-white shadow-xs'
                   : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
@@ -2109,7 +2110,7 @@ export const RightInspectorAndChat: React.FC<RightPanelProps> = ({
                 setCompactTab('chat');
                 setSeenChatCount(gameState.chat.length);
               }}
-              className={`relative py-1.5 rounded-lg text-[11px] font-extrabold flex items-center justify-center gap-1 transition cursor-pointer ${
+              className={`relative py-1.5 rounded-lg text-[10.5px] xl:text-[11px] font-extrabold flex items-center justify-center gap-1 transition cursor-pointer whitespace-nowrap ${
                 compactTab === 'chat'
                   ? 'bg-blue-600 text-white shadow-xs'
                   : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
@@ -2123,14 +2124,14 @@ export const RightInspectorAndChat: React.FC<RightPanelProps> = ({
             </button>
             <button
               onClick={() => setCompactTab('logs')}
-              className={`py-1.5 rounded-lg text-[11px] font-extrabold flex items-center justify-center gap-1 transition cursor-pointer ${
+              className={`py-1.5 rounded-lg text-[10.5px] xl:text-[11px] font-extrabold flex items-center justify-center gap-1 transition cursor-pointer whitespace-nowrap ${
                 compactTab === 'logs'
                   ? 'bg-blue-600 text-white shadow-xs'
                   : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
               }`}
             >
               <ScrollText className="w-3.5 h-3.5 shrink-0" />
-              <span>Хід ({gameState.logs.length})</span>
+              <span>Хід гри ({gameState.logs.length})</span>
             </button>
           </div>
 

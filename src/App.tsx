@@ -85,11 +85,11 @@ function getOrCreatePlayerId(): string {
 
 function useIsDesktopXl(): boolean {
   const [isXl, setIsXl] = useState<boolean>(() =>
-    typeof window !== 'undefined' ? window.innerWidth >= 1280 : true
+    typeof window !== 'undefined' ? window.innerWidth >= 1024 : true
   );
 
   useEffect(() => {
-    const mq = window.matchMedia('(min-width: 1280px)');
+    const mq = window.matchMedia('(min-width: 1024px)');
     const update = () => setIsXl(mq.matches);
     update();
     mq.addEventListener('change', update);
@@ -936,7 +936,7 @@ export const App: React.FC = () => {
           className={
             mobileOrient.isEffectiveMobileLandscape
               ? 'overflow-hidden diia-mesh-bg vyshyvanka-pattern flex items-stretch justify-center select-none'
-              : 'min-h-dvh xl:h-dvh xl:overflow-hidden diia-mesh-bg vyshyvanka-pattern flex items-stretch justify-center p-1.5 sm:p-2 2xl:p-3'
+              : 'min-h-dvh lg:h-dvh lg:overflow-hidden diia-mesh-bg vyshyvanka-pattern flex items-stretch justify-center p-1.5 sm:p-2 2xl:p-3'
           }
         >
           {/* Rules Modal rendered INSIDE the match stage so it appears horizontally in landscape */}
