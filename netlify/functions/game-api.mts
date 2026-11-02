@@ -431,12 +431,12 @@ export default async (req: Request, _context: Context) => {
         {
           roomName:
             gameMode === 'team2v2'
-              ? 'Командна Битва 2×2 з AI'
-              : 'Швидка Битва з AI',
-          maxPlayers: 4,
+              ? `Альянс 2×2 • ${playerName}`
+              : `Битва Магнатів • ${playerName}`,
+          maxPlayers: botCount + 1,
           gameMode,
           startingMoney: 15000,
-          turnTimeSeconds: 75,
+          turnTimeSeconds: 60,
           karpatyBonusEnabled: true,
           isPublic: false,
         },
@@ -455,6 +455,7 @@ export default async (req: Request, _context: Context) => {
         ok: true,
         roomCode: room.state.roomCode,
         state: room.state,
+        version: rec.version,
       });
     }
 
@@ -492,6 +493,7 @@ export default async (req: Request, _context: Context) => {
         ok: true,
         roomCode: room.state.roomCode,
         state: room.state,
+        version: rec.version,
         rooms,
       });
     }
@@ -503,6 +505,11 @@ export default async (req: Request, _context: Context) => {
       let rec = await loadRoomRecord(roomCode);
       if (!rec && fallbackState && fallbackState.roomCode === roomCode) {
         const restored = hydrateGameRoom(fallbackState);
+        for (const p of restored.state.players) {
+          if (!p.isBot) {
+            p.isConnected = p.id === playerId;
+          }
+        }
         restored.destroy();
         rec = buildRecordFromRoom(restored, 0);
         await saveRoomRecord(rec);
@@ -533,6 +540,7 @@ export default async (req: Request, _context: Context) => {
         ok: true,
         roomCode: room.state.roomCode,
         state: room.state,
+        version: nextRec.version,
       });
     }
 
@@ -556,15 +564,26 @@ export default async (req: Request, _context: Context) => {
 
       const room = hydrateGameRoom(rec.state);
       let mutated = false;
+      const now = Date.now();
 
       if (playerId) {
         const existing = room.state.players.find((p) => p.id === playerId);
+        const isEliminated = room.state.eliminatedPlayers?.some(
+          (e) => e.id === playerId
+        );
         if (existing) {
-          if (!existing.isConnected) {
-            existing.isConnected = true;
+          if (room.touchPlayer(playerId, now)) {
             mutated = true;
           }
-        } else {
+        } else if (!isEliminated) {
+          if (room.state.status === 'lobby') {
+            room.destroy();
+            return Response.json({
+              ok: false,
+              kicked: true,
+              error: 'Власник кімнати вилучив вас зі столу',
+            });
+          }
           const reconnectRes = room.addOrReconnectPlayer(
             playerId,
             playerName,
@@ -576,17 +595,23 @@ export default async (req: Request, _context: Context) => {
         }
       }
 
-      if (room.advanceServerlessTick(Date.now())) {
+      if (room.advanceServerlessTick(now)) {
         mutated = true;
       }
       room.destroy();
 
+      let currentVersion = rec.version;
       if (mutated) {
         const nextRec = buildRecordFromRoom(room, rec.version);
         await saveRoomRecord(nextRec);
+        currentVersion = nextRec.version;
       }
 
-      return Response.json({ ok: true, state: room.state });
+      return Response.json({
+        ok: true,
+        state: room.state,
+        version: currentVersion,
+      });
     }
 
     if (action === 'room:leave') {
@@ -606,11 +631,14 @@ export default async (req: Request, _context: Context) => {
           room.declareBankruptcy(playerId, true);
         }
         room.handleDisconnect(playerId);
+        room.advanceServerlessTick(Date.now());
       }
       room.destroy();
 
-      const hasHuman = room.state.players.some((p) => !p.isBot && p.isConnected);
-      if (!hasHuman && room.state.status === 'lobby') {
+      const hasActiveHuman = room.state.players.some(
+        (p) => !p.isBot && !p.isBankrupt && p.isConnected
+      );
+      if (!hasActiveHuman) {
         await deleteRoomRecord(roomCode);
       } else {
         const nextRec = buildRecordFromRoom(room, rec.version);
@@ -639,12 +667,15 @@ export default async (req: Request, _context: Context) => {
 
     const room = hydrateGameRoom(rec.state);
     // Ensure returning player seat is linked if their ID changed
-    if (
-      playerId &&
-      !room.state.players.some((p) => p.id === playerId) &&
-      !room.state.eliminatedPlayers?.some((e) => e.id === playerId)
-    ) {
-      room.addOrReconnectPlayer(playerId, playerName, preferredToken);
+    if (playerId) {
+      if (
+        !room.state.players.some((p) => p.id === playerId) &&
+        !room.state.eliminatedPlayers?.some((e) => e.id === playerId) &&
+        room.state.status !== 'lobby'
+      ) {
+        room.addOrReconnectPlayer(playerId, playerName, preferredToken);
+      }
+      room.touchPlayer(playerId, Date.now());
     }
 
     let opResult: { ok: boolean; error?: string } = { ok: true };
@@ -762,16 +793,21 @@ export default async (req: Request, _context: Context) => {
         );
     }
 
-    room.advanceServerlessTick(Date.now());
+    const tickMutated = room.advanceServerlessTick(Date.now());
     room.destroy();
 
-    const nextRec = buildRecordFromRoom(room, rec.version);
-    await saveRoomRecord(nextRec);
+    let currentVersion = rec.version;
+    if (opResult.ok || tickMutated) {
+      const nextRec = buildRecordFromRoom(room, rec.version);
+      await saveRoomRecord(nextRec);
+      currentVersion = nextRec.version;
+    }
 
     return Response.json({
       ok: opResult.ok,
       error: opResult.error,
       state: room.state,
+      version: currentVersion,
     });
   } catch (err) {
     return Response.json(

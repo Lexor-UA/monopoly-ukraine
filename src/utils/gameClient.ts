@@ -97,6 +97,8 @@ export class HybridGameClient {
   private cloudSyncTimer: ReturnType<typeof setInterval> | null = null;
   private cloudLobbyTimer: ReturnType<typeof setInterval> | null = null;
   private cloudSyncInFlight = false;
+  private cloudMutationSeq = 0;
+  private cloudRoomVersion = 0;
   private visibilityListener: (() => void) | null = null;
 
   // P2P / In-Browser Engine state
@@ -262,6 +264,7 @@ export class HybridGameClient {
     }
     this.cloudSyncInFlight = true;
     const targetCode = this.cloudActiveRoomCode;
+    const seqAtStart = this.cloudMutationSeq;
     try {
       const savedSnap = this.loadHostSnapshot();
       const fallbackState =
@@ -283,14 +286,43 @@ export class HybridGameClient {
       }
       const data = (await res.json()) as {
         ok?: boolean;
+        kicked?: boolean;
+        error?: string;
+        version?: number;
         state?: GameState;
       };
+      if (this.destroyed || this.cloudActiveRoomCode !== targetCode) {
+        return;
+      }
+      if (data?.kicked) {
+        this.cloudActiveRoomCode = null;
+        this.cloudRoomVersion = 0;
+        this.clearHostSnapshot();
+        this.opts.onRoomExit?.(
+          data.error || 'Власник кімнати вилучив вас зі столу'
+        );
+        return;
+      }
+      // If a user action started or completed while this poll was in flight, discard stale poll
+      if (this.cloudMutationSeq !== seqAtStart) {
+        return;
+      }
+      if (
+        typeof data?.version === 'number' &&
+        data.version < this.cloudRoomVersion
+      ) {
+        return;
+      }
       if (data?.ok && data.state) {
+        if (typeof data.version === 'number') {
+          this.cloudRoomVersion = data.version;
+        }
         const wasRemovedFromLobby =
           data.state.status === 'lobby' &&
           !data.state.players.some((p) => p.id === this.opts.playerId);
         if (wasRemovedFromLobby) {
           this.cloudActiveRoomCode = null;
+          this.cloudRoomVersion = 0;
           this.clearHostSnapshot();
           this.opts.onRoomExit?.('Власник кімнати вилучив вас зі столу');
           return;
@@ -325,9 +357,12 @@ export class HybridGameClient {
       return;
     }
 
+    this.cloudMutationSeq += 1;
+
     if (event === 'room:leave') {
       const codeToLeave = this.cloudActiveRoomCode;
       this.cloudActiveRoomCode = null;
+      this.cloudRoomVersion = 0;
       this.clearHostSnapshot();
       try {
         if (codeToLeave) {
@@ -377,6 +412,7 @@ export class HybridGameClient {
       });
       const data = (await res.json()) as Record<string, unknown> & {
         ok?: boolean;
+        version?: number;
         state?: GameState;
         rooms?: RoomSummary[];
       };
@@ -386,7 +422,13 @@ export class HybridGameClient {
       }
 
       if (data?.ok && data.state) {
+        if (this.cloudActiveRoomCode !== data.state.roomCode) {
+          this.cloudRoomVersion = 0;
+        }
         this.cloudActiveRoomCode = data.state.roomCode;
+        if (typeof data.version === 'number') {
+          this.cloudRoomVersion = Math.max(this.cloudRoomVersion, data.version);
+        }
         this.saveStateSnapshot(data.state);
         this.opts.onState(data.state);
       }

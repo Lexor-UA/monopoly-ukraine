@@ -91,6 +91,8 @@ export interface Player {
   doublesCount: number;
   /** Consecutive turns completed with zero manual player actions (3 -> eliminated from match) */
   missedTurns?: number;
+  /** Last heartbeat/action timestamp for serverless presence detection */
+  lastSeenAt?: number;
 }
 
 export interface EliminatedPlayerRecord {
@@ -198,6 +200,14 @@ export interface MoveAnimationData {
   to: number;
   steps: number[];
   moveId: number;
+  timestamp?: number;
+}
+
+export interface BotMemoryState {
+  lastBotTradeTurn: number;
+  lastBotAllyTradeTurn: number;
+  attemptedDebtRescueKey: string | null;
+  rejectedCooldowns: Record<string, number>;
 }
 
 export interface ToastTransfer {
@@ -218,8 +228,10 @@ export interface GameState {
   turnNumber: number;
   turnEndsAt: number | null;
   turnDurationMs?: number | null;
+  lastStepAt?: number;
   playerActedThisTurn?: boolean;
   eliminatedPlayers?: EliminatedPlayerRecord[];
+  botMemory?: BotMemoryState;
   players: Player[];
   properties: Record<number, PropertyState>;
   lastDice: [number, number] | null;

@@ -78,6 +78,7 @@ export class GameRoom {
   private lastRollTimestamp = 0;
   private lastMoveTimestamp = 0;
   private isChainingRollMoves = false;
+  private serverlessMode = false;
 
   constructor(
     roomCode: string,
@@ -214,6 +215,7 @@ export class GameRoom {
 
   public restoreFromSnapshot(saved: GameState, serverlessMode = false): void {
     this.destroy();
+    this.serverlessMode = serverlessMode;
     this.state = JSON.parse(JSON.stringify(saved)) as GameState;
     this.state.settings.gameMode =
       this.state.settings.gameMode === 'team2v2' ? 'team2v2' : 'classic';
@@ -226,8 +228,22 @@ export class GameRoom {
     this.state.winningTeamId = saved.winningTeamId ?? null;
     this.state.playerActedThisTurn = Boolean(saved.playerActedThisTurn);
     this.state.eliminatedPlayers = saved.eliminatedPlayers ?? [];
+    this.state.lastStepAt =
+      typeof saved.lastStepAt === 'number'
+        ? saved.lastStepAt
+        : (saved.logs?.[0]?.timestamp ?? Date.now());
     this.moveCounter = saved.lastMove?.moveId ?? 0;
     this.toastCounter = saved.lastToast?.id ?? 0;
+    this.lastMoveTimestamp = saved.lastMove?.timestamp ?? 0;
+    this.lastRollTimestamp = saved.lastMove?.timestamp ?? 0;
+    this.lastBotTradeTurn = saved.botMemory?.lastBotTradeTurn ?? -5;
+    this.lastBotAllyTradeTurn = saved.botMemory?.lastBotAllyTradeTurn ?? -3;
+    this.attemptedDebtRescueKey =
+      saved.botMemory?.attemptedDebtRescueKey ?? null;
+    this.rejectedBotTradeCooldowns = new Map<string, number>(
+      Object.entries(saved.botMemory?.rejectedCooldowns ?? {})
+    );
+    this.syncBotMemoryToState();
     this.diiaDeck = shuffle(DIIA_CARDS);
     this.unityDeck = shuffle(UNITY_CARDS);
     for (const p of this.state.players) {
@@ -293,7 +309,29 @@ export class GameRoom {
     };
   }
 
+  private syncBotMemoryToState(): void {
+    this.state.botMemory = {
+      lastBotTradeTurn: this.lastBotTradeTurn,
+      lastBotAllyTradeTurn: this.lastBotAllyTradeTurn,
+      attemptedDebtRescueKey: this.attemptedDebtRescueKey,
+      rejectedCooldowns: Object.fromEntries(
+        this.rejectedBotTradeCooldowns.entries()
+      ),
+    };
+  }
+
+  public touchPlayer(playerId: string, now = Date.now()): boolean {
+    const player = this.state.players.find((p) => p.id === playerId);
+    if (!player || player.isBot) return false;
+    const prevConnected = player.isConnected;
+    const prevSeen = player.lastSeenAt ?? 0;
+    player.isConnected = true;
+    player.lastSeenAt = now;
+    return !prevConnected || now - prevSeen >= 8000;
+  }
+
   private emit(): void {
+    this.syncBotMemoryToState();
     this.onUpdate(this);
   }
 
@@ -420,11 +458,21 @@ export class GameRoom {
     name: string,
     preferredToken?: TokenId
   ): { ok: boolean; error?: string } {
+    const now = Date.now();
     const existing = this.state.players.find((p) => p.id === playerId);
     if (existing) {
       existing.isConnected = true;
+      existing.lastSeenAt = now;
       if (this.state.status === 'lobby' && name.trim()) {
-        existing.name = name.trim().slice(0, 22);
+        const candidateName = name.trim().slice(0, 22);
+        const takenByOther = this.state.players.some(
+          (p) =>
+            p.id !== playerId &&
+            p.name.trim().toLowerCase() === candidateName.toLowerCase()
+        );
+        if (!takenByOther) {
+          existing.name = candidateName;
+        }
       }
       this.emit();
       return { ok: true };
@@ -432,6 +480,8 @@ export class GameRoom {
 
     // Reclaim seat if player refreshed in mobile WebView / switched browser and got a new playerId
     const normalizedName = name.trim().toLowerCase();
+    const isGenericDefaultName =
+      normalizedName === 'магнат україни' || normalizedName === 'гравець';
     const disconnectedHumans = this.state.players.filter(
       (p) => !p.isBot && !p.isConnected && !p.isBankrupt
     );
@@ -454,9 +504,14 @@ export class GameRoom {
       !reclaimDisconnectedByName &&
       !reclaimSoleDisconnected &&
       this.state.status !== 'lobby' &&
-      normalizedName
+      normalizedName &&
+      !isGenericDefaultName
         ? this.state.players.find(
-            (p) => !p.isBot && p.name.trim().toLowerCase() === normalizedName
+            (p) =>
+              !p.isBot &&
+              !p.isBankrupt &&
+              p.name.trim().toLowerCase() === normalizedName &&
+              (!p.lastSeenAt || now - p.lastSeenAt > 3500)
           )
         : undefined;
     const seatToReclaim =
@@ -466,6 +521,7 @@ export class GameRoom {
     if (seatToReclaim) {
       this.migratePlayerId(seatToReclaim.id, playerId);
       seatToReclaim.isConnected = true;
+      seatToReclaim.lastSeenAt = now;
       this.emit();
       return { ok: true };
     }
@@ -539,6 +595,7 @@ export class GameRoom {
       amnestyCards: 0,
       doublesCount: 0,
       missedTurns: 0,
+      lastSeenAt: now,
     };
 
     this.state.players.push(player);
@@ -592,7 +649,22 @@ export class GameRoom {
     if (!clean) {
       return { ok: false, error: 'Введіть ім’я гравця' };
     }
-    player.name = clean;
+    const takenNames = new Set(
+      this.state.players
+        .filter((p) => p.id !== playerId)
+        .map((p) => p.name.toLowerCase())
+    );
+    let finalName = clean;
+    if (takenNames.has(finalName.toLowerCase())) {
+      let suffix = 2;
+      while (
+        takenNames.has(`${clean.slice(0, 19)} ${suffix}`.toLowerCase())
+      ) {
+        suffix += 1;
+      }
+      finalName = `${clean.slice(0, 19)} ${suffix}`;
+    }
+    player.name = finalName;
     this.emit();
     return { ok: true };
   }
@@ -638,6 +710,7 @@ export class GameRoom {
       amnestyCards: 0,
       doublesCount: 0,
       missedTurns: 0,
+      lastSeenAt: Date.now(),
     };
 
     this.state.players.push(bot);
@@ -771,6 +844,8 @@ export class GameRoom {
     const player = this.state.players.find((p) => p.id === playerId);
     if (!player || player.isBot) return;
     player.missedTurns = 0;
+    player.isConnected = true;
+    player.lastSeenAt = Date.now();
     const active = this.getActivePlayer();
     if (active && active.id === playerId) {
       this.state.playerActedThisTurn = true;
@@ -1047,6 +1122,7 @@ export class GameRoom {
 
   // === TIMERS & WATCHDOG HEARTBEAT ===
   private ensureWatchdog(): void {
+    if (this.serverlessMode) return;
     if (this.watchdogInterval) return;
     this.watchdogInterval = setInterval(() => {
       this.runWatchdogTick();
@@ -1132,6 +1208,7 @@ export class GameRoom {
   }
 
   private scheduleBotTimeout(fn: () => void, ms: number): void {
+    if (this.serverlessMode) return;
     const t = setTimeout(() => {
       this.botTimers.delete(t);
       if (this.state.status !== 'playing') return;
@@ -1142,6 +1219,7 @@ export class GameRoom {
 
   private resetTurnTimer(explicitMs?: number): void {
     this.clearTurnTimer();
+    this.state.lastStepAt = Date.now();
     if (this.state.status !== 'playing' || this.state.phase === 'GAME_OVER') {
       this.state.turnEndsAt = null;
       this.state.turnDurationMs = null;
@@ -1182,9 +1260,11 @@ export class GameRoom {
 
     this.state.turnDurationMs = ms;
     this.state.turnEndsAt = Date.now() + ms;
-    this.turnTimer = setTimeout(() => {
-      this.handleTurnTimeout();
-    }, ms);
+    if (!this.serverlessMode) {
+      this.turnTimer = setTimeout(() => {
+        this.handleTurnTimeout();
+      }, ms);
+    }
   }
 
   private handleTurnTimeout(): void {
@@ -1314,6 +1394,12 @@ export class GameRoom {
     const active = this.getActivePlayer();
     if (!active || active.id !== playerId) {
       return { ok: false, error: 'Зараз не ваш хід' };
+    }
+    if (this.state.pendingTrade) {
+      return {
+        ok: false,
+        error: 'Спочатку дочекайтеся відповіді на Смарт-Угоду',
+      };
     }
     const canRollInPost =
       this.state.phase === 'POST_ROLL' &&
@@ -1449,6 +1535,7 @@ export class GameRoom {
       to,
       steps,
       moveId: this.moveCounter,
+      timestamp: this.lastMoveTimestamp,
     };
 
     if (steps.includes(0)) {
@@ -1498,6 +1585,7 @@ export class GameRoom {
       to: targetIndex,
       steps: prevMove ? [...prevMove.steps, ...steps] : steps,
       moveId: this.moveCounter,
+      timestamp: this.lastMoveTimestamp,
     };
 
     if (passStartBonus && steps.includes(0)) {
@@ -1532,6 +1620,7 @@ export class GameRoom {
       to: 10,
       steps: prevMove ? [...prevMove.steps, 10] : [10],
       moveId: this.moveCounter,
+      timestamp: this.lastMoveTimestamp,
     };
     this.pushToast('Санкційний Ізолятор', player.name, 'Активи під наглядом', 'expense');
   }
@@ -2217,11 +2306,14 @@ export class GameRoom {
 
   private resetAuctionTimer(ms = 14000): void {
     this.clearAuctionTimer();
+    this.state.lastStepAt = Date.now();
     if (!this.state.auction) return;
     this.state.auction.endsAt = Date.now() + ms;
-    this.auctionTimer = setTimeout(() => {
-      this.finalizeAuction();
-    }, ms);
+    if (!this.serverlessMode) {
+      this.auctionTimer = setTimeout(() => {
+        this.finalizeAuction();
+      }, ms);
+    }
   }
 
   public placeAuctionBid(
@@ -2298,6 +2390,7 @@ export class GameRoom {
     if (auc.highestBidderId === playerId) return; // Leader cannot pass against themselves
 
     this.recordManualPlayerAction(playerId);
+    this.state.lastStepAt = Date.now();
     auc.activeParticipantIds = auc.activeParticipantIds.filter(
       (id) => id !== playerId
     );
@@ -2389,6 +2482,7 @@ export class GameRoom {
   private canManageAssetsNow(playerId: string): boolean {
     const active = this.getActivePlayer();
     if (!active || active.id !== playerId) return false;
+    if (this.state.pendingTrade) return false;
     return (
       this.state.phase === 'PRE_ROLL' ||
       this.state.phase === 'BUY_DECISION' ||
@@ -2649,6 +2743,7 @@ export class GameRoom {
     };
 
     this.state.pendingTrade = trade;
+    this.state.lastStepAt = now;
     // Pause turn timeout while players review the Smart-Trade so turn never auto-ends mid-negotiation
     this.clearTurnTimer();
     this.state.turnEndsAt = trade.expiresAt + 15000;
@@ -2661,11 +2756,13 @@ export class GameRoom {
     );
 
     this.clearTradeTimer();
-    this.tradeTimer = setTimeout(() => {
-      if (this.state.pendingTrade?.id === trade.id) {
-        this.respondTrade(to.id, false, true);
-      }
-    }, durationMs);
+    if (!this.serverlessMode) {
+      this.tradeTimer = setTimeout(() => {
+        if (this.state.pendingTrade?.id === trade.id) {
+          this.respondTrade(to.id, false, true);
+        }
+      }, durationMs);
+    }
 
     this.emit();
 
@@ -3072,7 +3169,23 @@ export class GameRoom {
 
     if (this.state.debt?.debtorId === playerId) {
       this.state.debt = null;
+    } else if (this.state.debt?.creditorId === playerId) {
+      this.state.debt.creditorId = null;
     }
+
+    if (this.state.hostId === playerId) {
+      const nextHost =
+        this.state.players.find(
+          (p) => !p.isBot && !p.isBankrupt && p.isConnected
+        ) ??
+        this.state.players.find((p) => !p.isBot && !p.isBankrupt) ??
+        this.state.players.find((p) => !p.isBot);
+      if (nextHost) {
+        this.state.hostId = nextHost.id;
+      }
+    }
+
+    let cancelledTrade = false;
     if (
       this.state.pendingTrade &&
       (this.state.pendingTrade.fromPlayerId === playerId ||
@@ -3081,6 +3194,7 @@ export class GameRoom {
       this.clearTradeTimer();
       this.state.pendingTrade = null;
       this.resetTurnTimer();
+      cancelledTrade = true;
     }
 
     // Check winner (classic or 2v2 alliance victory)
@@ -3140,6 +3254,9 @@ export class GameRoom {
       this.advanceToNextPlayer();
     } else {
       this.emit();
+      if (cancelledTrade) {
+        this.scheduleBotIfNeeded();
+      }
     }
     return { ok: true };
   }
@@ -3275,8 +3392,10 @@ export class GameRoom {
   }
 
   // === SMART AI BOT ENGINE ===
-  private getRemainingVisualMotionMs(playerId: string): number {
-    const now = Date.now();
+  private getRemainingVisualMotionMs(
+    playerId: string,
+    now = Date.now()
+  ): number {
     const diceElapsed = now - this.lastRollTimestamp;
     const remDice = diceElapsed < 1350 ? 1350 - diceElapsed : 0;
 
@@ -3316,6 +3435,7 @@ export class GameRoom {
   private scheduleBotIfNeeded(): void {
     if (this.state.status !== 'playing') return;
     if (this.state.pendingTrade) return; // Wait for trade response first
+    this.clearBotTimers();
     const active = this.getActivePlayer();
     if (!active || !active.isBot || active.isBankrupt) return;
 
@@ -3463,6 +3583,7 @@ export class GameRoom {
           this.botTryProposeAllyConsolidation(active)
         ) {
           this.lastBotAllyTradeTurn = this.state.turnNumber;
+          this.syncBotMemoryToState();
           return;
         }
 
@@ -3473,6 +3594,7 @@ export class GameRoom {
           this.botTryProposeMonopolyTrade(active)
         ) {
           this.lastBotTradeTurn = this.state.turnNumber;
+          this.syncBotMemoryToState();
           return;
         }
 
@@ -3606,6 +3728,7 @@ export class GameRoom {
 
   private scheduleBotsForAuction(): void {
     if (this.state.phase !== 'AUCTION' || !this.state.auction) return;
+    this.clearBotTimers();
     const auc = this.state.auction;
     const cell = BOARD_CELLS[auc.cellIndex];
     if (!cell || !cell.price) return;
@@ -4266,6 +4389,7 @@ export class GameRoom {
         this.botTryProposeAllyConsolidation(active)
       ) {
         this.lastBotAllyTradeTurn = this.state.turnNumber;
+        this.syncBotMemoryToState();
         return true;
       }
 
@@ -4275,6 +4399,7 @@ export class GameRoom {
         this.botTryProposeMonopolyTrade(active)
       ) {
         this.lastBotTradeTurn = this.state.turnNumber;
+        this.syncBotMemoryToState();
         return true;
       }
 
@@ -4294,9 +4419,28 @@ export class GameRoom {
    * when running inside a stateless Serverless Function (e.g. Netlify Database).
    */
   public advanceServerlessTick(now = Date.now()): boolean {
-    if (this.state.status !== 'playing' || this.state.phase === 'GAME_OVER') {
-      return false;
+    let mutated = false;
+
+    for (const p of this.state.players) {
+      if (
+        !p.isBot &&
+        p.isConnected &&
+        typeof p.lastSeenAt === 'number' &&
+        now - p.lastSeenAt > 20000
+      ) {
+        p.isConnected = false;
+        mutated = true;
+      }
     }
+
+    if (this.state.status !== 'playing' || this.state.phase === 'GAME_OVER') {
+      return mutated;
+    }
+
+    const lastStepTs = Math.max(
+      this.state.lastStepAt ?? 0,
+      this.state.logs[0]?.timestamp ?? 0
+    );
 
     // 1. Pending Smart-Trade
     if (this.state.pendingTrade) {
@@ -4305,13 +4449,13 @@ export class GameRoom {
         (p) => p.id === trade.toPlayerId
       );
       if (target?.isBot && now - trade.createdAt >= 2000) {
-        return this.executeBotTradeDecisionImmediate(target, trade);
+        return this.executeBotTradeDecisionImmediate(target, trade) || mutated;
       }
       if (now >= trade.expiresAt + 250) {
         this.respondTrade(trade.toPlayerId, false, true);
         return true;
       }
-      return false;
+      return mutated;
     }
 
     // 2. Active Auction
@@ -4321,29 +4465,28 @@ export class GameRoom {
         .map((id) => this.state.players.find((p) => p.id === id))
         .filter((p): p is Player => Boolean(p && p.isBot && !p.isBankrupt));
       const nextBot = activeBots.find((b) => b.id !== auc.highestBidderId);
-      const lastLogTs = this.state.logs[0]?.timestamp ?? 0;
-      if (nextBot && now - lastLogTs >= 1800) {
-        return this.executeBotAuctionStepImmediate(nextBot);
+      if (nextBot && now - lastStepTs >= 1800) {
+        return this.executeBotAuctionStepImmediate(nextBot) || mutated;
       }
       if (now >= auc.endsAt + 250) {
         this.finalizeAuction();
         return true;
       }
-      return false;
+      return mutated;
     }
 
     // 3. Active AI Bot Turn
     const active = this.getActivePlayer();
     if (active && active.isBot && !active.isBankrupt) {
-      const lastLogTs = this.state.logs[0]?.timestamp ?? 0;
+      const remMotionMs = this.getRemainingVisualMotionMs(active.id, now);
       const minStepDelay =
         this.state.phase === 'PRE_ROLL'
           ? 1600
           : this.state.latestEventCard
-            ? 4200
-            : 2100;
-      if (now - lastLogTs >= minStepDelay) {
-        return this.executeBotStepImmediate(active);
+            ? Math.max(4200, remMotionMs + 2200)
+            : Math.max(2100, remMotionMs + 1100);
+      if (now - lastStepTs >= minStepDelay) {
+        return this.executeBotStepImmediate(active) || mutated;
       }
     }
 
@@ -4357,7 +4500,7 @@ export class GameRoom {
       return true;
     }
 
-    return false;
+    return mutated;
   }
 }
 
