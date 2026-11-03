@@ -105,6 +105,7 @@ export class HybridGameClient {
   private hostRoom: GameRoom | null = null;
   private hostPeer: Peer | null = null;
   private hostPeerReconnecting = false;
+  private hostSignalingTimer: ReturnType<typeof setInterval> | null = null;
   private guestConnections = new Map<DataConnection, string>();
   private lastAnnouncedRoomCode: string | null = null;
   private localRoomsChannel: BroadcastChannel | null = null;
@@ -163,61 +164,80 @@ export class HybridGameClient {
     backendMode: 'server' | 'cloud' | null;
     lanIp: string | null;
   }> {
-    const ctrl = new AbortController();
-    const timeout = setTimeout(() => ctrl.abort(), 2200);
-    try {
-      const res = await fetch('/api/health', {
-        signal: ctrl.signal,
-        headers: { Accept: 'application/json' },
-        cache: 'no-store',
-      });
-      clearTimeout(timeout);
-      if (!res.ok) {
-        return { available: false, backendMode: null, lanIp: null };
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      if (this.destroyed) break;
+      const ctrl = new AbortController();
+      const timeout = setTimeout(() => ctrl.abort(), 5000);
+      try {
+        const res = await fetch('/api/health', {
+          signal: ctrl.signal,
+          headers: { Accept: 'application/json' },
+          cache: 'no-store',
+        });
+        clearTimeout(timeout);
+        if (res.ok) {
+          const contentType = res.headers.get('content-type') || '';
+          if (contentType.includes('application/json')) {
+            const data = (await res.json()) as {
+              ok?: boolean;
+              mode?: string;
+              lanIps?: string[];
+            };
+            if (data?.ok === true) {
+              return {
+                available: true,
+                backendMode: data.mode === 'netlify-db' ? 'cloud' : 'server',
+                lanIp:
+                  data.lanIps && data.lanIps.length > 0 ? data.lanIps[0] : null,
+              };
+            }
+          } else {
+            // Static SPA fallback (HTML returned for /api/health) -> no backend
+            return { available: false, backendMode: null, lanIp: null };
+          }
+        }
+      } catch {
+        clearTimeout(timeout);
       }
-      const contentType = res.headers.get('content-type') || '';
-      if (!contentType.includes('application/json')) {
-        return { available: false, backendMode: null, lanIp: null };
+      if (attempt < 2 && !this.destroyed) {
+        await new Promise((r) => setTimeout(r, 400));
       }
-      const data = (await res.json()) as {
-        ok?: boolean;
-        mode?: string;
-        lanIps?: string[];
-      };
-      if (data?.ok === true) {
-        return {
-          available: true,
-          backendMode: data.mode === 'netlify-db' ? 'cloud' : 'server',
-          lanIp: data.lanIps && data.lanIps.length > 0 ? data.lanIps[0] : null,
-        };
-      }
-      return { available: false, backendMode: null, lanIp: null };
-    } catch {
-      clearTimeout(timeout);
-      return { available: false, backendMode: null, lanIp: null };
     }
+    return { available: false, backendMode: null, lanIp: null };
   }
 
   private bootCloudDatabaseMode(): void {
+    const alreadyCloud = this.mode === 'cloud';
     this.mode = 'cloud';
     this.markReady();
-    this.opts.onConnect('cloud', null);
+    if (!alreadyCloud) {
+      this.opts.onConnect('cloud', null);
+    }
 
-    // Poll active room every 1000ms for real-time state, timers, and AI bot steps
-    this.cloudSyncTimer = setInterval(() => {
-      if (!this.destroyed && this.cloudActiveRoomCode) {
-        void this.pollCloudRoom();
-      }
-    }, 1000);
+    if (!this.cloudSyncTimer) {
+      // Poll active room every 1000ms for real-time state, timers, and AI bot steps
+      this.cloudSyncTimer = setInterval(() => {
+        if (!this.destroyed && this.cloudActiveRoomCode) {
+          void this.pollCloudRoom();
+        }
+      }, 1000);
+    }
 
-    // Refresh public lobby list when on home screen
-    this.cloudLobbyTimer = setInterval(() => {
-      if (!this.destroyed && !this.cloudActiveRoomCode) {
-        void this.fetchCloudLobbyRooms();
-      }
-    }, 4500);
+    if (!this.cloudLobbyTimer) {
+      // Refresh public lobby list when on home screen
+      this.cloudLobbyTimer = setInterval(() => {
+        if (!this.destroyed && !this.cloudActiveRoomCode) {
+          void this.fetchCloudLobbyRooms();
+        }
+      }, 4500);
+    }
 
     if (typeof document !== 'undefined') {
+      if (this.visibilityListener) {
+        document.removeEventListener('visibilitychange', this.visibilityListener);
+        window.removeEventListener('online', this.visibilityListener);
+        window.removeEventListener('focus', this.visibilityListener);
+      }
       const onWake = () => {
         if (this.destroyed || document.visibilityState === 'hidden') return;
         if (this.cloudActiveRoomCode) {
@@ -396,45 +416,105 @@ export class HybridGameClient {
         ? savedSnap
         : undefined;
 
-    try {
-      const res = await fetch('/api/cloud-room', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...payload,
-          action: event,
-          roomCode: requestedRoomCode,
-          playerId: String(payload.playerId || this.opts.playerId),
-          playerName: this.cloudPlayerName,
-          token: (payload.token as TokenId) || this.cloudPlayerToken,
-          fallbackState,
-        }),
-      });
-      const data = (await res.json()) as Record<string, unknown> & {
-        ok?: boolean;
-        version?: number;
-        state?: GameState;
-        rooms?: RoomSummary[];
-      };
-
-      if (data?.rooms && Array.isArray(data.rooms)) {
-        this.opts.onRooms(data.rooms);
-      }
-
-      if (data?.ok && data.state) {
-        if (this.cloudActiveRoomCode !== data.state.roomCode) {
-          this.cloudRoomVersion = 0;
+    let lastNetworkError = false;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      if (this.destroyed) return;
+      try {
+        const res = await fetch('/api/cloud-room', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...payload,
+            action: event,
+            roomCode: requestedRoomCode,
+            playerId: String(payload.playerId || this.opts.playerId),
+            playerName: this.cloudPlayerName,
+            token: (payload.token as TokenId) || this.cloudPlayerToken,
+            fallbackState,
+          }),
+        });
+        if (!res.ok && res.status >= 502 && attempt < 3) {
+          await new Promise((r) => setTimeout(r, 550 * attempt));
+          continue;
         }
-        this.cloudActiveRoomCode = data.state.roomCode;
-        if (typeof data.version === 'number') {
-          this.cloudRoomVersion = Math.max(this.cloudRoomVersion, data.version);
-        }
-        this.saveStateSnapshot(data.state);
-        this.opts.onState(data.state);
-      }
+        const data = (await res.json()) as Record<string, unknown> & {
+          ok?: boolean;
+          version?: number;
+          state?: GameState;
+          rooms?: RoomSummary[];
+          error?: string;
+        };
 
-      ack?.(data);
-    } catch {
+        if (data?.rooms && Array.isArray(data.rooms)) {
+          this.opts.onRooms(data.rooms);
+        }
+
+        if (data?.ok && data.state) {
+          if (this.cloudActiveRoomCode !== data.state.roomCode) {
+            this.cloudRoomVersion = 0;
+          }
+          this.cloudActiveRoomCode = data.state.roomCode;
+          if (typeof data.version === 'number') {
+            this.cloudRoomVersion = Math.max(
+              this.cloudRoomVersion,
+              data.version
+            );
+          }
+          this.saveStateSnapshot(data.state);
+          this.opts.onState(data.state);
+          ack?.(data);
+          return;
+        }
+
+        // Cross-transport bridge: if room was created on P2P by another device, try P2P join automatically!
+        if (
+          event === 'room:join' &&
+          requestedRoomCode &&
+          data?.ok === false &&
+          typeof data.error === 'string' &&
+          data.error.includes('не знайдено')
+        ) {
+          const p2pJoin = await this.connectGuestToHost(
+            requestedRoomCode,
+            String(payload.playerId || this.opts.playerId),
+            this.cloudPlayerName,
+            (payload.token as TokenId) || this.cloudPlayerToken
+          );
+          if (p2pJoin?.ok && p2pJoin.state) {
+            if (this.cloudSyncTimer) {
+              clearInterval(this.cloudSyncTimer);
+              this.cloudSyncTimer = null;
+            }
+            if (this.cloudLobbyTimer) {
+              clearInterval(this.cloudLobbyTimer);
+              this.cloudLobbyTimer = null;
+            }
+            this.guestExplicitLeft = false;
+            this.guestActiveRoomCode = requestedRoomCode;
+            this.guestJoinCredentials = {
+              roomCode: requestedRoomCode,
+              playerId: String(payload.playerId || this.opts.playerId),
+              playerName: this.cloudPlayerName,
+              token: (payload.token as TokenId) || this.cloudPlayerToken,
+            };
+            this.bootServerlessP2PMode();
+            this.opts.onState(p2pJoin.state as GameState);
+            ack?.(p2pJoin);
+            return;
+          }
+        }
+
+        ack?.(data);
+        return;
+      } catch {
+        lastNetworkError = true;
+        if (attempt < 3 && !this.destroyed) {
+          await new Promise((r) => setTimeout(r, 550 * attempt));
+        }
+      }
+    }
+
+    if (lastNetworkError) {
       // Fallback: if player has a local snapshot of this room and network is momentarily unreachable
       if (event === 'room:join' && fallbackState) {
         this.cloudActiveRoomCode = fallbackState.roomCode;
@@ -501,9 +581,61 @@ export class HybridGameClient {
     this.mode = 'p2p';
     this.setupLocalRoomsDiscoveryChannel();
     this.setupP2PVisibilityRecovery();
+    if (!this.hostSignalingTimer) {
+      this.hostSignalingTimer = setInterval(() => {
+        if (!this.destroyed) {
+          this.ensureHostPeerAlive();
+        }
+      }, 6000);
+    }
     this.markReady();
     this.emitMergedLocalPublicRooms();
     this.opts.onConnect('p2p', null);
+  }
+
+  private ensureHostPeerAlive(): void {
+    if (
+      !this.hostRoom ||
+      this.destroyed ||
+      this.hostPeerReconnecting
+    ) {
+      return;
+    }
+    if (
+      this.hostPeer &&
+      !this.hostPeer.destroyed &&
+      !this.hostPeer.disconnected
+    ) {
+      return;
+    }
+    if (
+      this.hostPeer &&
+      this.hostPeer.disconnected &&
+      !this.hostPeer.destroyed
+    ) {
+      try {
+        this.hostPeer.reconnect();
+        return;
+      } catch {
+        // Fall through to full re-open
+      }
+    }
+    const room = this.hostRoom;
+    const code = room.state.roomCode;
+    this.hostPeerReconnecting = true;
+    this.openHostPeerWithRetry(code, 8)
+      .then(({ peer }) => {
+        this.hostPeerReconnecting = false;
+        if (this.destroyed || this.hostRoom !== room) {
+          peer.destroy();
+          return;
+        }
+        this.hostPeer = peer;
+        this.bindIncomingHostConnections(peer, room);
+      })
+      .catch(() => {
+        this.hostPeerReconnecting = false;
+      });
   }
 
   private setupP2PVisibilityRecovery(): void {
@@ -963,6 +1095,19 @@ export class HybridGameClient {
   }
 
   private bindIncomingHostConnections(peer: Peer, room: GameRoom): void {
+    peer.on('disconnected', () => {
+      if (this.destroyed || this.hostRoom !== room || this.hostPeer !== peer) {
+        return;
+      }
+      if (!peer.destroyed) {
+        try {
+          peer.reconnect();
+        } catch {
+          // Periodic ensureHostPeerAlive will recreate if needed
+        }
+      }
+    });
+
     peer.on('connection', (conn: DataConnection) => {
       conn.on('data', (raw: unknown) => {
         if (this.destroyed || this.hostRoom !== room) return;
@@ -1006,9 +1151,41 @@ export class HybridGameClient {
           return;
         }
 
-        const actorId = this.guestConnections.get(conn);
+        let actorId = this.guestConnections.get(conn);
         if (!actorId) {
-          reply({ ok: false, error: 'Сесію гравця не авторизовано' });
+          // Self-heal guest session if DataChannel dropped/re-bound or had a transient error
+          const candidateId = String(msg.payload?.playerId || '').trim();
+          const candidateName = String(
+            msg.payload?.playerName || 'Магнат України'
+          ).trim();
+          const candidateToken = msg.payload?.token as TokenId | undefined;
+          if (candidateId) {
+            const existingPlayer = room.state.players.find(
+              (p) => p.id === candidateId
+            );
+            if (existingPlayer) {
+              room.touchPlayer(candidateId, Date.now());
+              actorId = candidateId;
+              this.guestConnections.set(conn, candidateId);
+            } else {
+              const rejoin = room.addOrReconnectPlayer(
+                candidateId,
+                candidateName,
+                candidateToken
+              );
+              if (rejoin.ok) {
+                actorId = candidateId;
+                this.guestConnections.set(conn, candidateId);
+              }
+            }
+          }
+        }
+        if (!actorId) {
+          reply({
+            ok: false,
+            code: 'NO_SESSION',
+            error: 'З’єднання з кімнатою синхронізується...',
+          });
           return;
         }
 
@@ -1057,7 +1234,11 @@ export class HybridGameClient {
       };
 
       conn.on('close', handleConnClosed);
-      conn.on('error', handleConnClosed);
+      conn.on('error', () => {
+        if (!conn.open) {
+          handleConnClosed();
+        }
+      });
     });
   }
 
@@ -1206,8 +1387,16 @@ export class HybridGameClient {
       return;
     }
 
-    // 2. CREATE ONLINE MULTIPLAYER ROOM (WebRTC P2P Host)
+    // 2. CREATE ONLINE MULTIPLAYER ROOM (Upgrade to Cloud DB if reachable, else WebRTC P2P Host)
     if (event === 'room:create') {
+      const health = await this.probeNodeBackend();
+      if (!this.destroyed && health.available && health.backendMode === 'cloud') {
+        this.teardownP2PSession(true);
+        this.bootCloudDatabaseMode();
+        await this.handleCloudEmit(event, payload, ack);
+        return;
+      }
+
       this.teardownP2PSession(true);
       const playerId = String(payload.playerId || this.opts.playerId);
       const playerName = String(payload.playerName || 'Магнат України');
@@ -1345,7 +1534,48 @@ export class HybridGameClient {
         return;
       }
 
-      // Case 3C: Guest joining remote Host over WebRTC P2P (with 3-attempt retry if host tab is waking from WhatsApp)
+      // Case 3C: Check if room exists in Cloud Database first (in case host created room in Cloud mode while this client cold-started into P2P!)
+      try {
+        const cloudCheckCtrl = new AbortController();
+        const cloudCheckTimer = setTimeout(() => cloudCheckCtrl.abort(), 3500);
+        const cloudRes = await fetch('/api/cloud-room', {
+          method: 'POST',
+          signal: cloudCheckCtrl.signal,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'room:join',
+            roomCode: code,
+            playerId,
+            playerName,
+            token: token || this.cloudPlayerToken,
+          }),
+        });
+        clearTimeout(cloudCheckTimer);
+        if (cloudRes.ok && !this.destroyed) {
+          const cloudData = (await cloudRes.json()) as Record<string, unknown> & {
+            ok?: boolean;
+            version?: number;
+            state?: GameState;
+          };
+          if (cloudData?.ok && cloudData.state) {
+            this.teardownP2PSession(true);
+            this.cloudPlayerName = playerName;
+            if (token) this.cloudPlayerToken = token;
+            this.cloudActiveRoomCode = cloudData.state.roomCode;
+            this.cloudRoomVersion =
+              typeof cloudData.version === 'number' ? cloudData.version : 1;
+            this.bootCloudDatabaseMode();
+            this.saveStateSnapshot(cloudData.state);
+            this.opts.onState(cloudData.state);
+            ack?.(cloudData);
+            return;
+          }
+        }
+      } catch {
+        // Cloud endpoint unavailable; proceed with WebRTC P2P join
+      }
+
+      // Guest joining remote Host over WebRTC P2P (with 3-attempt retry if host tab is waking from WhatsApp)
       this.teardownP2PSession(true);
       this.guestExplicitLeft = false;
       this.guestActiveRoomCode = code;
@@ -1426,23 +1656,63 @@ export class HybridGameClient {
 
       if (this.guestConn && this.guestConn.open) {
         try {
-          const res = await this.sendGuestRequest(event, payload, 6000);
+          const res = await this.sendGuestRequest(event, payload, 5500);
           ack?.(res);
-        } catch (err) {
-          ack?.({
-            ok: false,
-            error:
-              err instanceof Error
-                ? err.message
-                : 'Зв’язок із хостом кімнати перервано',
-          });
+          return;
+        } catch {
+          // Connection stalled or dropped mid-request — fall through to immediate auto-reconnect & retry below!
         }
-        return;
       }
 
+      if (
+        !this.destroyed &&
+        !this.guestExplicitLeft &&
+        this.guestActiveRoomCode &&
+        this.guestJoinCredentials
+      ) {
+        const creds = this.guestJoinCredentials;
+        if (this.guestConn) {
+          try {
+            this.guestConn.close();
+          } catch {
+            // Ignore
+          }
+          this.guestConn = null;
+        }
+        if (this.guestPeer) {
+          try {
+            this.guestPeer.destroy();
+          } catch {
+            // Ignore
+          }
+          this.guestPeer = null;
+        }
+        const reconn = await this.connectGuestToHost(
+          creds.roomCode,
+          creds.playerId,
+          creds.playerName,
+          creds.token
+        );
+        const activeConn = this.guestConn as DataConnection | null;
+        if (reconn?.ok && activeConn && activeConn.open) {
+          if (reconn.state) {
+            this.opts.onState(reconn.state as GameState);
+          }
+          try {
+            const retryRes = await this.sendGuestRequest(event, payload, 5500);
+            ack?.(retryRes);
+            return;
+          } catch {
+            // Fall through
+          }
+        }
+      }
+
+      this.scheduleGuestAutoReconnect();
       ack?.({
         ok: false,
-        error: 'З’єднання з кімнатою втрачено — зачекайте перепідключення',
+        code: 'NO_SESSION',
+        error: 'З’єднання з кімнатою відновлюється — спробуйте ще раз',
       });
     }
   }
@@ -1532,7 +1802,7 @@ export class HybridGameClient {
           this.sendGuestRequest(
             'room:join',
             { roomCode: code, playerId, playerName, token },
-            5000
+            5500
           )
             .then((res) => {
               if (res?.ok) {
@@ -1541,6 +1811,14 @@ export class HybridGameClient {
               finish(res);
             })
             .catch(() => {
+              try {
+                conn.close();
+              } catch {
+                // Ignore
+              }
+              if (this.guestConn === conn) {
+                this.guestConn = null;
+              }
               finish({
                 ok: false,
                 error: `Хост кімнати «${code}» не відповідає`,
@@ -1562,7 +1840,11 @@ export class HybridGameClient {
         };
 
         conn.on('close', handleDisconnect);
-        conn.on('error', handleDisconnect);
+        conn.on('error', () => {
+          if (!conn.open) {
+            handleDisconnect();
+          }
+        });
       });
     });
   }
@@ -1639,11 +1921,30 @@ export class HybridGameClient {
 
       this.pendingAcks.set(reqId, { resolve, timer });
 
+      const enrichedPayload: Record<string, unknown> = {
+        ...payload,
+        playerId: String(
+          payload.playerId ||
+            this.guestJoinCredentials?.playerId ||
+            this.opts.playerId
+        ),
+        playerName: String(
+          payload.playerName ||
+            this.guestJoinCredentials?.playerName ||
+            this.cloudPlayerName ||
+            'Магнат України'
+        ),
+        token:
+          (payload.token as TokenId) ||
+          this.guestJoinCredentials?.token ||
+          this.cloudPlayerToken,
+      };
+
       const msg: P2PRequestMessage = {
         type: 'req',
         reqId,
         event,
-        payload,
+        payload: enrichedPayload,
       };
       conn.send(msg);
     });
@@ -1651,6 +1952,10 @@ export class HybridGameClient {
 
   public destroy(): void {
     this.destroyed = true;
+    if (this.hostSignalingTimer) {
+      clearInterval(this.hostSignalingTimer);
+      this.hostSignalingTimer = null;
+    }
     if (this.cloudSyncTimer) {
       clearInterval(this.cloudSyncTimer);
       this.cloudSyncTimer = null;

@@ -299,56 +299,71 @@ export const App: React.FC = () => {
           savedRoom ||
           parseRoomCodeInput(liveState?.roomCode || '');
 
-        if (targetRoom) {
-          setRoomBusy(true);
-          client.emit(
-            'room:join',
-            {
-              roomCode: targetRoom,
-              playerId,
-              playerName:
-                window.sessionStorage.getItem('magnat_session_player_name') ||
-                window.localStorage.getItem('magnat_player_name') ||
-                'Магнат України',
-              token:
-                (window.localStorage.getItem('magnat_token') as TokenId) ||
-                'tryzub',
-              fallbackState:
-                liveState &&
-                parseRoomCodeInput(liveState.roomCode) === targetRoom
-                  ? liveState
-                  : undefined,
-            },
-            (res) => {
-              setRoomBusy(false);
-              if (res?.ok && res.state) {
-                const st = res.state as GameState;
-                syncJoinedRoomState(st, true);
-              } else {
-                window.sessionStorage.removeItem('magnat_active_room');
-                window.localStorage.removeItem('magnat_active_room');
+        if (
+          targetRoom &&
+          parseRoomCodeInput(liveState?.roomCode || '') !== targetRoom
+        ) {
+          const attemptInitialJoin = (isRetryAttempt: boolean) => {
+            setRoomBusy(true);
+            client.emit(
+              'room:join',
+              {
+                roomCode: targetRoom,
+                playerId,
+                playerName:
+                  window.sessionStorage.getItem('magnat_session_player_name') ||
+                  window.localStorage.getItem('magnat_player_name') ||
+                  'Магнат України',
+                token:
+                  (window.localStorage.getItem('magnat_token') as TokenId) ||
+                  'tryzub',
+                fallbackState:
+                  liveState &&
+                  parseRoomCodeInput(liveState.roomCode) === targetRoom
+                    ? liveState
+                    : undefined,
+              },
+              (res) => {
+                setRoomBusy(false);
+                if (res?.ok && res.state) {
+                  const st = res.state as GameState;
+                  syncJoinedRoomState(st, true);
+                  return;
+                }
+
+                const errText =
+                  typeof res?.error === 'string' ? res.error : '';
+                const isTransientNetworkError =
+                  /мереж|підключ|відповідає|перервано|синхронізується|відновлюється/i.test(
+                    errText
+                  );
+
+                if (isTransientNetworkError && !isRetryAttempt) {
+                  setTimeout(() => {
+                    if (!gameStateRef.current) {
+                      attemptInitialJoin(true);
+                    }
+                  }, 2200);
+                  return;
+                }
+
+                if (!isTransientNetworkError) {
+                  window.sessionStorage.removeItem('magnat_active_room');
+                  window.localStorage.removeItem('magnat_active_room');
+                }
                 if (gameStateRef.current) {
                   gameStateRef.current = null;
                   setGameState(null);
                   setMobileTab('board');
-                  showError(
-                    typeof res?.error === 'string'
-                      ? res.error
-                      : 'Сесію кімнати завершено'
-                  );
-                } else if (urlRoom && typeof res?.error === 'string') {
-                  showError(res.error);
-                }
-                if (urlRoom) {
-                  window.history.replaceState(
-                    {},
-                    '',
-                    window.location.pathname
-                  );
+                  showError(errText || 'Сесію кімнати завершено');
+                } else if (urlRoom && errText) {
+                  showError(errText);
                 }
               }
-            }
-          );
+            );
+          };
+
+          attemptInitialJoin(false);
         }
       },
       onDisconnect: () => {

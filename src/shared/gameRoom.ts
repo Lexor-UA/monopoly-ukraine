@@ -482,42 +482,83 @@ export class GameRoom {
     const normalizedName = name.trim().toLowerCase();
     const isGenericDefaultName =
       normalizedName === 'магнат україни' || normalizedName === 'гравець';
-    const disconnectedHumans = this.state.players.filter(
-      (p) => !p.isBot && !p.isConnected && !p.isBankrupt
+    const matchesNameOrNumbered = (p: Player): boolean => {
+      if (!normalizedName) return false;
+      const pName = p.name.trim().toLowerCase();
+      return (
+        pName === normalizedName ||
+        pName.startsWith(`${normalizedName.slice(0, 19)} `)
+      );
+    };
+
+    const activeHumans = this.state.players.filter(
+      (p) => !p.isBot && !p.isBankrupt
     );
+    const nonHostHumans = activeHumans.filter(
+      (p) => p.id !== this.state.hostId
+    );
+    const disconnectedHumans = activeHumans.filter((p) => !p.isConnected);
+
+    // 1. Disconnected human matching name (preferring non-host first if numbered suffix)
     const reclaimDisconnectedByName = normalizedName
-      ? disconnectedHumans.find((p) => {
-          const pName = p.name.trim().toLowerCase();
-          return (
-            pName === normalizedName ||
-            pName.startsWith(`${normalizedName.slice(0, 19)} `)
-          );
-        })
+      ? (disconnectedHumans.find(
+          (p) => p.id !== this.state.hostId && matchesNameOrNumbered(p)
+        ) ?? disconnectedHumans.find((p) => matchesNameOrNumbered(p)))
       : undefined;
+
+    // 2. Sole disconnected human in an active match
     const reclaimSoleDisconnected =
       !reclaimDisconnectedByName &&
       this.state.status !== 'lobby' &&
       disconnectedHumans.length === 1
         ? disconnectedHumans[0]
         : undefined;
-    const reclaimConnectedByNameInActiveMatch =
+
+    // 3. Connected human in an active match whose network dropped before 45s timeout
+    let reclaimConnectedInActiveMatch: Player | undefined;
+    if (
       !reclaimDisconnectedByName &&
       !reclaimSoleDisconnected &&
-      this.state.status !== 'lobby' &&
-      normalizedName &&
-      !isGenericDefaultName
-        ? this.state.players.find(
+      this.state.status !== 'lobby'
+    ) {
+      if (normalizedName && !isGenericDefaultName) {
+        // Custom player name: match non-host human immediately, or host if stale (>2.5s)
+        reclaimConnectedInActiveMatch =
+          nonHostHumans.find((p) => matchesNameOrNumbered(p)) ??
+          activeHumans.find(
             (p) =>
-              !p.isBot &&
-              !p.isBankrupt &&
-              p.name.trim().toLowerCase() === normalizedName &&
-              (!p.lastSeenAt || now - p.lastSeenAt > 3500)
-          )
-        : undefined;
+              matchesNameOrNumbered(p) &&
+              (!p.lastSeenAt || now - p.lastSeenAt > 2500)
+          );
+      } else if (normalizedName && isGenericDefaultName) {
+        // Default name ('Магнат України'):
+        // - Guest who joined with default name was auto-named 'Магнат України 2' (or 'Магнат України' if host had custom name).
+        //   Allow reclaiming non-host human seat without ever touching an active host!
+        reclaimConnectedInActiveMatch =
+          nonHostHumans.find(
+            (p) =>
+              p.name.trim().toLowerCase() !== normalizedName &&
+              matchesNameOrNumbered(p)
+          ) ??
+          nonHostHumans.find((p) => matchesNameOrNumbered(p)) ??
+          (nonHostHumans.length === 1 &&
+          (!nonHostHumans[0].lastSeenAt ||
+            now - nonHostHumans[0].lastSeenAt > 2500)
+            ? nonHostHumans[0]
+            : undefined) ??
+          activeHumans.find(
+            (p) =>
+              p.id === this.state.hostId &&
+              matchesNameOrNumbered(p) &&
+              (!p.lastSeenAt || now - p.lastSeenAt > 4000)
+          );
+      }
+    }
+
     const seatToReclaim =
       reclaimDisconnectedByName ??
       reclaimSoleDisconnected ??
-      reclaimConnectedByNameInActiveMatch;
+      reclaimConnectedInActiveMatch;
     if (seatToReclaim) {
       this.migratePlayerId(seatToReclaim.id, playerId);
       seatToReclaim.isConnected = true;

@@ -38,6 +38,7 @@ import {
   TOKENS,
   formatMoney,
   isPurchasableCell,
+  parseRoomCodeInput,
 } from '../shared/boardData';
 import {
   GameMode,
@@ -121,7 +122,23 @@ export const HomeLobby: React.FC<HomeLobbyProps> = ({
 }) => {
   const [botCount, setBotCount] = useState(3);
   const [quickGameMode, setQuickGameMode] = useState<GameMode>('classic');
-  const [joinCode, setJoinCode] = useState('');
+  const [joinCode, setJoinCode] = useState(() => {
+    if (typeof window === 'undefined') return '';
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return (
+        parseRoomCodeInput(params.get('room') || '') ||
+        parseRoomCodeInput(
+          window.sessionStorage.getItem('magnat_active_room') ||
+            window.localStorage.getItem('magnat_active_room') ||
+            ''
+        ) ||
+        ''
+      );
+    } catch {
+      return '';
+    }
+  });
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [roomName, setRoomName] = useState('');
   const [createGameMode, setCreateGameMode] = useState<GameMode>('classic');
