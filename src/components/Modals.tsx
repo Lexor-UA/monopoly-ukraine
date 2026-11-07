@@ -793,7 +793,7 @@ export const VictoryModal: React.FC<{
                     {winner.name}
                   </div>
                   <div className="text-xs text-slate-300">
-                    Переможець МАГНАТ.UA
+                    Переможець КАБЗДА.UA
                   </div>
                 </div>
               </div>
@@ -950,7 +950,7 @@ export const RulesModal: React.FC<{ open: boolean; onClose: () => void }> = ({
         <div className="p-3.5 rounded-2xl bg-[var(--surface-subtle)] border border-[var(--border-glass)] flex items-start gap-2.5 text-[11px] text-[var(--text-muted)]">
           <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
           <p className="leading-relaxed">
-            <strong>Правова інформація:</strong> МАГНАТ.UA — незалежна авторська
+            <strong>Правова інформація:</strong> КАБЗДА.UA — незалежна авторська
             онлайн-гра. Усі бренди, персонажі та події у грі є вигаданими
             художніми образами й не мають стосунку до реальних банків, державних
             сервісів чи зареєстрованих торговельних марок.

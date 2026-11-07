@@ -263,7 +263,7 @@ restorePersistedRoomsOnBoot();
 app.get('/api/health', (_req, res) => {
   res.json({
     ok: true,
-    name: 'МАГНАТ.UA Server',
+    name: 'КАБЗДА.UA Server',
     activeRooms: rooms.size,
     lanIps: getLocalLanIps(),
   });
@@ -828,6 +828,6 @@ httpServer.listen(PORT, '0.0.0.0', () => {
   const lanIps = getLocalLanIps();
   const lanHint = lanIps[0] ? ` • Wi-Fi LAN: http://${lanIps[0]}:${PORT}` : '';
   console.log(
-    `🇺🇦 МАГНАТ.UA Сервер запущено на http://localhost:${PORT}${lanHint} (${isProd ? 'production' : 'development'})`
+    `🇺🇦 КАБЗДА.UA Сервер запущено на http://localhost:${PORT}${lanHint} (${isProd ? 'production' : 'development'})`
   );
 });

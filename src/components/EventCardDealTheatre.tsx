@@ -817,7 +817,7 @@ export const EventCardWowOverlay: React.FC<{
                             : 'border-amber-300/50 text-amber-100'
                         }`}
                       >
-                        МАГНАТ.UA
+                        КАБЗДА.UA
                       </span>
                       <span
                         className={`w-8 h-8 rounded-xl bg-slate-950/80 border flex items-center justify-center ${

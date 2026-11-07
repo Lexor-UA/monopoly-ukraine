@@ -2,7 +2,7 @@
   "name": "magnat-ua",
   "private": true,
   "version": "1.0.0",
-  "description": "МАГНАТ.UA — Перша українська економічна онлайн-стратегія",
+  "description": "КАБЗДА.UA — Перша українська економічна онлайн-стратегія",
   "type": "module",
   "scripts": {
     "dev": "concurrently -k -n SERVER,CLIENT -c cyan,yellow \"tsx watch server/index.ts\" \"vite\"",

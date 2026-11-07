@@ -815,7 +815,7 @@ export const HomeLobby: React.FC<HomeLobbyProps> = ({
                           : 'Розпочати командний матч 2 на 2!'
                         : gameState.players.length < 2
                           ? 'Додайте гравця або AI-бота для старту'
-                          : 'Розпочати матч МАГНАТ.UA!'}
+                          : 'Розпочати матч КАБЗДА.UA!'}
                     </button>
                   ) : (
                     <div className="w-full py-4 rounded-2xl bg-[var(--surface-subtle)] border border-[var(--border-strong)] text-center text-sm font-extrabold">
@@ -988,7 +988,7 @@ export const HomeLobby: React.FC<HomeLobbyProps> = ({
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5">
                         <span className="font-display font-black text-[12.5px] sm:text-[13.5px] tracking-[0.04em] uppercase">
-                          МАГНАТ
+                          КАБЗДА
                         </span>
                         <span className="magnat-ua-ingot inline-flex items-center justify-center px-2 py-[2px] rounded-full text-[8.5px] font-black leading-none tracking-[0.06em]">
                           UA
@@ -1703,7 +1703,7 @@ export const HomeLobby: React.FC<HomeLobbyProps> = ({
                 </div>
                 <p className="leading-relaxed font-medium">
                   <strong className="font-extrabold text-[var(--text-primary)]">
-                    МАГНАТ.UA — незалежна авторська онлайн-гра.
+                    КАБЗДА.UA — незалежна авторська онлайн-гра.
                   </strong>{' '}
                   Усі назви компаній, логотипи, ігрові картки, персонажі та події у
                   грі є оригінальними художніми образами. Проєкт є повністю

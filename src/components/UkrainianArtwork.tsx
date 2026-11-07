@@ -79,7 +79,7 @@ export const MagnatBrandIcon: React.FC<{
       >
         <img
           src="/images/magnat-crest-icon.jpg"
-          alt="МАГНАТ.UA — Коронований Золотий Тризуб, Хмарочоси та Кубики"
+          alt="КАБЗДА.UA — Коронований Золотий Тризуб, Хмарочоси та Кубики"
           decoding="async"
           className="w-full h-full object-cover contrast-[1.03] saturate-[1.05]"
         />
@@ -125,10 +125,10 @@ export const MagnatWordmark: React.FC<{
             aria-hidden="true"
             className="col-start-1 row-start-1 magnat-wordmark-extrude pointer-events-none select-none"
           >
-            МАГНАТ
+            КАБЗДА
           </span>
           <span className="col-start-1 row-start-1 magnat-wordmark-face">
-            МАГНАТ
+            КАБЗДА
           </span>
         </span>
 

@@ -1887,7 +1887,7 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
           {/* Softly Toned Atmospheric 3D Metropolis Watermark (Never Competes with Cards or Dice) */}
           <img
             src={withCardArtVersion('/images/ukraine-metropolis.jpg')}
-            alt="МАГНАТ.UA Мегаполіс"
+            alt="КАБЗДА.UA Мегаполіс"
             className="absolute inset-0 w-full h-full object-cover opacity-[0.26] dark:opacity-[0.22] brightness-[0.86] contrast-[0.98] saturate-[0.72] pointer-events-none select-none scale-[1.02]"
           />
           {/* Restful Theme-Adaptive Matte Veil Eliminating Sky Glare */}
