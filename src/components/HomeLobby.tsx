@@ -1062,10 +1062,10 @@ export const HomeLobby: React.FC<HomeLobbyProps> = ({
                 </div>
               </div>
 
-              {/* INTERACTIVE MAGNAT.UA PLATINUM CARD (ISO 7810 1.586:1 RATIO) + 2x3 TOKEN PICKER */}
-              <div className="grid grid-cols-1 md:grid-cols-[276px_minmax(0,1fr)] lg:grid-cols-1 xl:grid-cols-[282px_minmax(0,1fr)] gap-4 items-center pt-1">
+              {/* INTERACTIVE MAGNAT.UA PLATINUM CARD (ISO 7810 1.586:1 RATIO) + TOKEN PICKER */}
+              <div className="grid grid-cols-1 md:grid-cols-[264px_minmax(0,1fr)] xl:grid-cols-[282px_minmax(0,1fr)] gap-4 items-center pt-1">
                 {/* Physical White/Obsidian Platinum Bank Card Preview — True 85.6×53.98mm (1.586:1) Ratio */}
-                <div className="w-full max-w-[320px] md:max-w-none lg:max-w-[324px] xl:max-w-none mx-auto">
+                <div className="w-full max-w-[320px] md:max-w-none mx-auto">
                   <div className="mono-physical-card aspect-[1.586/1] w-full rounded-[15px] px-4.5 py-3.5 sm:px-5 sm:py-4 text-slate-900 dark:text-white flex flex-col justify-between select-none">
                     {/* Top Row: Unified Cyrillic Brand Wordmark + Gold UA Ingot + Platinum Tier + NFC */}
                     <div className="flex items-center justify-between">
@@ -1180,127 +1180,6 @@ export const HomeLobby: React.FC<HomeLobbyProps> = ({
                   </div>
                 </div>
               </div>
-
-              {/* MAGNATE PROFILE & CAREER BAR (Logged-In Stats or 1-Click Registration CTA) */}
-              <div className="pt-2 border-t border-[var(--border-glass)]">
-                {userProfile ? (
-                  (() => {
-                    const rank = getMagnateRank(userProfile.stats);
-                    const wr =
-                      userProfile.stats.matchesPlayed > 0
-                        ? Math.round(
-                            (userProfile.stats.wins /
-                              userProfile.stats.matchesPlayed) *
-                              100
-                          )
-                        : 0;
-                    return (
-                      <div className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/12 via-blue-600/8 to-transparent border border-amber-400/35 flex flex-wrap items-center justify-between gap-3">
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <span className="w-9 h-9 rounded-xl bg-amber-400/20 border border-amber-400/45 flex items-center justify-center text-base shrink-0">
-                            {rank.badge}
-                          </span>
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              <span className="font-display font-extrabold text-xs sm:text-sm">
-                                {userProfile.displayName}
-                              </span>
-                              <span className="px-2 py-0.5 rounded-full bg-amber-400/20 border border-amber-400/40 text-amber-800 dark:text-amber-200 text-[10px] font-extrabold">
-                                {rank.title}
-                              </span>
-                              <span className="px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-[9.5px] font-bold inline-flex items-center gap-0.5">
-                                <UserCheck className="w-3 h-3" /> Хмара
-                              </span>
-                            </div>
-                            <div className="text-[11px] font-semibold text-[var(--text-secondary)] mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5">
-                              <span>
-                                🏆 Перемог:{' '}
-                                <strong className="text-[var(--text-primary)]">
-                                  {userProfile.stats.wins}
-                                </strong>
-                              </span>
-                              <span>
-                                🎲 Матчів:{' '}
-                                <strong className="text-[var(--text-primary)]">
-                                  {userProfile.stats.matchesPlayed}
-                                </strong>{' '}
-                                ({wr}%)
-                              </span>
-                              <span>
-                                💰 Рекорд:{' '}
-                                <strong className="text-emerald-600 dark:text-emerald-400">
-                                  {formatMoney(userProfile.stats.bestNetWorth)}
-                                </strong>
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2 shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => onOpenProfile('leaderboard')}
-                            className="px-3 py-2 rounded-xl bg-[var(--surface-solid)] border border-[var(--border-strong)] hover:border-amber-400 text-xs font-extrabold inline-flex items-center gap-1.5 transition cursor-pointer"
-                          >
-                            <Trophy className="w-3.5 h-3.5 text-amber-500" />
-                            <span>Рейтинг</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => onOpenProfile('profile')}
-                            className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold inline-flex items-center gap-1.5 shadow-sm transition cursor-pointer"
-                          >
-                            <span>Кабінет Магната →</span>
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })()
-                ) : (
-                  <div className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-blue-600/10 via-amber-400/10 to-transparent border border-blue-500/25 flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-9 h-9 rounded-xl bg-blue-600/15 border border-blue-500/35 flex items-center justify-center text-blue-600 dark:text-sky-300 shrink-0">
-                        <Crown className="w-4.5 h-4.5 text-amber-500" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="font-display font-extrabold text-xs sm:text-sm">
-                          Персональний Профіль та Кар’єра Магната
-                        </div>
-                        <p className="text-[11px] font-semibold text-[var(--text-secondary)] leading-snug">
-                          Зареєструйте акаунт за 10 секунд — зберігайте перемоги,
-                          звання, рекорди капіталу та донати на ЗСУ!
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => onOpenProfile('leaderboard')}
-                        className="px-3 py-2 rounded-xl bg-[var(--surface-solid)] border border-[var(--border-strong)] hover:border-amber-400 text-xs font-extrabold inline-flex items-center gap-1.5 transition cursor-pointer"
-                      >
-                        <Trophy className="w-3.5 h-3.5 text-amber-500" />
-                        <span>Рейтинг</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onOpenProfile('login')}
-                        className="px-3 py-2 rounded-xl bg-[var(--surface-solid)] border border-[var(--border-strong)] hover:border-blue-500 text-xs font-extrabold transition cursor-pointer"
-                      >
-                        Увійти
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onOpenProfile('register')}
-                        className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold inline-flex items-center gap-1.5 shadow-sm transition cursor-pointer"
-                      >
-                        <UserPlus className="w-3.5 h-3.5" />
-                        <span>Реєстрація</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
             </motion.div>
 
             {/* RIGHT 5 COLS: TWO LUXURY GAME LAUNCHER CARDS */}
@@ -1409,45 +1288,47 @@ export const HomeLobby: React.FC<HomeLobbyProps> = ({
               </div>
 
               {/* Card 2: Multiplayer Online Room Launcher */}
-              <div className="glass-panel rounded-[24px] sm:rounded-[30px] p-5 sm:p-7 flex flex-col justify-between gap-5 flex-1">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-600/12 border border-blue-500/25 text-blue-700 dark:text-sky-300 text-[11px] font-extrabold">
-                      <Users className="w-3.5 h-3.5" /> Онлайн із друзями
-                    </span>
-                    <h2 className="font-display font-extrabold text-xl sm:text-2xl mt-2 leading-tight">
-                      Мультиплеєр за посиланням
-                    </h2>
-                    <p className="text-xs font-medium text-[var(--text-secondary)] mt-1.5 leading-relaxed">
-                      Створіть власну кімнату, надішліть пряме посилання друзям
-                      і додайте AI-ботів на вільні місця за столом.
-                    </p>
+              <div className="glass-panel rounded-[24px] sm:rounded-[30px] p-5 sm:p-6 flex flex-col justify-between gap-4 flex-1">
+                <div className="space-y-3.5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-600/12 border border-blue-500/25 text-blue-700 dark:text-sky-300 text-[11px] font-extrabold">
+                        <Users className="w-3.5 h-3.5" /> Онлайн із друзями
+                      </span>
+                      <h2 className="font-display font-extrabold text-xl sm:text-2xl mt-2 leading-tight">
+                        Мультиплеєр за посиланням
+                      </h2>
+                      <p className="text-xs font-medium text-[var(--text-secondary)] mt-1.5 leading-relaxed">
+                        Створіть власну кімнату, надішліть пряме посилання друзям
+                        і додайте AI-ботів на вільні місця за столом.
+                      </p>
+                    </div>
+                    <img
+                      src="/images/cell-gov-cloud.jpg"
+                      alt="Смарт-угоди та мультиплеєр"
+                      decoding="async"
+                      className="w-16 h-16 rounded-2xl object-cover border border-[var(--border-strong)] shadow-md shrink-0 hidden sm:block"
+                    />
                   </div>
-                  <img
-                    src="/images/cell-gov-cloud.jpg"
-                    alt="Смарт-угоди та мультиплеєр"
-                    decoding="async"
-                    className="w-16 h-16 rounded-2xl object-cover border border-[var(--border-strong)] shadow-md shrink-0 hidden sm:block"
-                  />
+
+                  <div className="flex flex-wrap gap-1.5">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--surface-subtle)] border border-[var(--border-glass)] text-[10.5px] font-bold text-[var(--text-secondary)]">
+                      <Zap className="w-3 h-3 text-amber-500 dark:text-amber-400" />
+                      Без реєстрації
+                    </span>
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-400/12 border border-amber-400/35 text-[10.5px] font-extrabold text-amber-700 dark:text-amber-300">
+                      <Handshake className="w-3 h-3" />
+                      Режим 2 на 2
+                    </span>
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--surface-subtle)] border border-[var(--border-glass)] text-[10.5px] font-bold text-[var(--text-secondary)]">
+                      <Bot className="w-3 h-3 text-emerald-500 dark:text-emerald-400" />
+                      До 4 гравців + AI
+                    </span>
+                  </div>
                 </div>
 
-                <div className="flex flex-wrap gap-1.5">
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--surface-subtle)] border border-[var(--border-glass)] text-[10.5px] font-bold text-[var(--text-secondary)]">
-                    <Zap className="w-3 h-3 text-amber-500 dark:text-amber-400" />
-                    Без реєстрації
-                  </span>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-400/12 border border-amber-400/35 text-[10.5px] font-extrabold text-amber-700 dark:text-amber-300">
-                    <Handshake className="w-3 h-3" />
-                    Режим 2 на 2
-                  </span>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--surface-subtle)] border border-[var(--border-glass)] text-[10.5px] font-bold text-[var(--text-secondary)]">
-                    <Bot className="w-3 h-3 text-emerald-500 dark:text-emerald-400" />
-                    До 4 гравців + AI
-                  </span>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="grid grid-cols-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-2">
+                <div className="space-y-2.5 pt-1">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <button
                       disabled={roomBusy}
                       onClick={() => {
@@ -1456,10 +1337,10 @@ export const HomeLobby: React.FC<HomeLobbyProps> = ({
                         setShowCreateModal(true);
                       }}
                       title="Створити відкриту кімнату (з’явиться у списку на сайті)"
-                      className="min-w-0 py-3 px-2.5 rounded-2xl bg-gradient-to-r from-[#0057B8] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#3B82F6] dark:bg-none dark:bg-white dark:text-slate-950 dark:hover:bg-amber-300 text-white font-display font-bold text-[11.5px] xl:text-xs flex items-center justify-center gap-1.5 transition shadow-md disabled:opacity-60 cursor-pointer whitespace-nowrap"
+                      className="min-w-0 py-3 px-3.5 rounded-2xl bg-gradient-to-r from-[#0057B8] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#3B82F6] dark:bg-none dark:bg-white dark:text-slate-950 dark:hover:bg-amber-300 text-white font-display font-bold text-xs flex items-center justify-center gap-2 transition shadow-md disabled:opacity-60 cursor-pointer whitespace-nowrap"
                     >
-                      <Globe className="w-3.5 h-3.5 shrink-0" />
-                      <span className="truncate">
+                      <Globe className="w-4 h-4 shrink-0" />
+                      <span>
                         {roomBusy ? 'Підключення...' : 'Відкрита кімната'}
                       </span>
                     </button>
@@ -1472,26 +1353,26 @@ export const HomeLobby: React.FC<HomeLobbyProps> = ({
                         setShowCreateModal(true);
                       }}
                       title="Створити закриту приватну кімнату (вхід тільки за кодом або посиланням)"
-                      className="min-w-0 py-3 px-2.5 rounded-2xl bg-slate-900/6 hover:bg-slate-900/12 dark:bg-white/10 dark:hover:bg-white/18 border border-[var(--border-strong)] text-[var(--text-primary)] font-display font-extrabold text-[11.5px] xl:text-xs flex items-center justify-center gap-1.5 transition shadow-2xs disabled:opacity-60 cursor-pointer whitespace-nowrap"
+                      className="min-w-0 py-3 px-3.5 rounded-2xl bg-slate-900/6 hover:bg-slate-900/12 dark:bg-white/10 dark:hover:bg-white/18 border border-[var(--border-strong)] text-[var(--text-primary)] font-display font-extrabold text-xs flex items-center justify-center gap-2 transition shadow-2xs disabled:opacity-60 cursor-pointer whitespace-nowrap"
                     >
-                      <Lock className="w-3.5 h-3.5 text-amber-500 dark:text-amber-300 shrink-0" />
-                      <span className="truncate">Закрита кімната</span>
-                    </button>
-
-                    <button
-                      disabled={roomBusy}
-                      onClick={() => {
-                        setCreateGameMode('team2v2');
-                        setMaxPlayers(4);
-                        setShowCreateModal(true);
-                      }}
-                      title="Створити командну онлайн-кімнату 2 на 2"
-                      className="col-span-2 sm:col-span-1 py-3 px-3 rounded-2xl bg-amber-400/16 hover:bg-amber-400 hover:text-slate-950 border border-amber-400/45 text-amber-800 dark:text-amber-200 font-display font-extrabold text-[11.5px] xl:text-xs flex items-center justify-center gap-1.5 transition shadow-2xs disabled:opacity-60 cursor-pointer whitespace-nowrap shrink-0"
-                    >
-                      <Handshake className="w-3.5 h-3.5 shrink-0" />
-                      <span>2 на 2</span>
+                      <Lock className="w-4 h-4 text-amber-500 dark:text-amber-300 shrink-0" />
+                      <span>Закрита кімната</span>
                     </button>
                   </div>
+
+                  <button
+                    disabled={roomBusy}
+                    onClick={() => {
+                      setCreateGameMode('team2v2');
+                      setMaxPlayers(4);
+                      setShowCreateModal(true);
+                    }}
+                    title="Створити командну онлайн-кімнату 2 на 2"
+                    className="w-full py-2.5 px-3.5 rounded-2xl bg-amber-400/14 hover:bg-amber-400 hover:text-slate-950 border border-amber-400/45 text-amber-800 dark:text-amber-200 font-display font-extrabold text-xs flex items-center justify-center gap-2 transition shadow-2xs disabled:opacity-60 cursor-pointer"
+                  >
+                    <Handshake className="w-4 h-4 shrink-0" />
+                    <span>Створити командну кімнату 2 на 2 (Альянси)</span>
+                  </button>
 
                   <form
                     onSubmit={(e) => {
@@ -1499,18 +1380,18 @@ export const HomeLobby: React.FC<HomeLobbyProps> = ({
                       if (roomBusy) return;
                       onJoinRoom(joinCode);
                     }}
-                    className="flex gap-2"
+                    className="flex gap-2 pt-0.5"
                   >
                     <input
                       value={joinCode}
                       onChange={(e) => setJoinCode(e.target.value)}
                       placeholder="Код UA-4821 або посилання"
-                      className="flex-1 min-w-0 px-3.5 sm:px-4 py-3 rounded-xl premium-input text-xs font-extrabold tracking-wide placeholder:uppercase outline-none"
+                      className="flex-1 min-w-0 px-3.5 sm:px-4 py-2.5 rounded-xl premium-input text-xs font-extrabold tracking-wide placeholder:uppercase outline-none"
                     />
                     <button
                       type="submit"
                       disabled={roomBusy}
-                      className="px-4 sm:px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-xs font-extrabold shadow-sm transition cursor-pointer shrink-0"
+                      className="px-4 sm:px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-xs font-extrabold shadow-sm transition cursor-pointer shrink-0"
                     >
                       {roomBusy ? '...' : 'Увійти'}
                     </button>
@@ -1518,6 +1399,127 @@ export const HomeLobby: React.FC<HomeLobbyProps> = ({
                 </div>
               </div>
             </motion.div>
+          </div>
+
+          {/* FULL-WIDTH MAGNATE PROFILE & CAREER BAR (Logged-In Stats or 1-Click Registration CTA) */}
+          <div className="glass-panel rounded-[24px] p-4 sm:px-6 sm:py-4 border border-blue-500/25 dark:border-amber-400/25">
+            {userProfile ? (
+              (() => {
+                const rank = getMagnateRank(userProfile.stats);
+                const wr =
+                  userProfile.stats.matchesPlayed > 0
+                    ? Math.round(
+                        (userProfile.stats.wins /
+                          userProfile.stats.matchesPlayed) *
+                          100
+                      )
+                    : 0;
+                return (
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="w-10 h-10 rounded-xl bg-amber-400/20 border border-amber-400/45 flex items-center justify-center text-lg shrink-0">
+                        {rank.badge}
+                      </span>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-display font-extrabold text-sm sm:text-base">
+                            {userProfile.displayName}
+                          </span>
+                          <span className="px-2.5 py-0.5 rounded-full bg-amber-400/20 border border-amber-400/40 text-amber-800 dark:text-amber-200 text-[10.5px] font-extrabold">
+                            {rank.title}
+                          </span>
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold inline-flex items-center gap-1">
+                            <UserCheck className="w-3 h-3" /> Хмарний профіль
+                          </span>
+                        </div>
+                        <div className="text-xs font-semibold text-[var(--text-secondary)] mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                          <span>
+                            🏆 Перемог:{' '}
+                            <strong className="text-[var(--text-primary)]">
+                              {userProfile.stats.wins}
+                            </strong>
+                          </span>
+                          <span>
+                            🎲 Матчів:{' '}
+                            <strong className="text-[var(--text-primary)]">
+                              {userProfile.stats.matchesPlayed}
+                            </strong>{' '}
+                            ({wr}%)
+                          </span>
+                          <span>
+                            💰 Рекорд капіталу:{' '}
+                            <strong className="text-emerald-600 dark:text-emerald-400">
+                              {formatMoney(userProfile.stats.bestNetWorth)}
+                            </strong>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => onOpenProfile('leaderboard')}
+                        className="px-3.5 py-2 rounded-xl bg-[var(--surface-solid)] border border-[var(--border-strong)] hover:border-amber-400 text-xs font-extrabold inline-flex items-center gap-1.5 transition cursor-pointer"
+                      >
+                        <Trophy className="w-3.5 h-3.5 text-amber-500" />
+                        <span>Рейтинг Магнатів</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onOpenProfile('profile')}
+                        className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold inline-flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+                      >
+                        <span>Кабінет Магната →</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()
+            ) : (
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-blue-600/15 border border-blue-500/35 flex items-center justify-center text-blue-600 dark:text-sky-300 shrink-0">
+                    <Crown className="w-5 h-5 text-amber-500" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="font-display font-extrabold text-xs sm:text-sm">
+                      Персональний Профіль та Кар’єра Магната
+                    </div>
+                    <p className="text-xs font-semibold text-[var(--text-secondary)] leading-snug">
+                      Зареєструйте акаунт за 10 секунд — зберігайте перемоги,
+                      звання, рекорди капіталу та місце у таблиці лідерів!
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => onOpenProfile('leaderboard')}
+                    className="px-3.5 py-2 rounded-xl bg-[var(--surface-solid)] border border-[var(--border-strong)] hover:border-amber-400 text-xs font-extrabold inline-flex items-center gap-1.5 transition cursor-pointer"
+                  >
+                    <Trophy className="w-3.5 h-3.5 text-amber-500" />
+                    <span>Рейтинг</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onOpenProfile('login')}
+                    className="px-3.5 py-2 rounded-xl bg-[var(--surface-solid)] border border-[var(--border-strong)] hover:border-blue-500 text-xs font-extrabold transition cursor-pointer"
+                  >
+                    Увійти
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onOpenProfile('register')}
+                    className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold inline-flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+                  >
+                    <UserPlus className="w-3.5 h-3.5" />
+                    <span>Реєстрація</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* OPEN PUBLIC ROOMS LOBBY */}
