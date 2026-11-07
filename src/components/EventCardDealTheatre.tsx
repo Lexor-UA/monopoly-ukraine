@@ -367,6 +367,7 @@ export const EventCardWowOverlay: React.FC<{
   onDismiss,
 }) => {
   const [canBackdropClose, setCanBackdropClose] = useState(false);
+  const [isFlippedToFront, setIsFlippedToFront] = useState(false);
 
   // Measure exact deck origin offset relative to the center of the arena
   const originMetrics = useMemo(() => {
@@ -415,11 +416,13 @@ export const EventCardWowOverlay: React.FC<{
   useEffect(() => {
     if (!card) {
       setCanBackdropClose(false);
+      setIsFlippedToFront(false);
       onTopCardLiftChange(null);
       return;
     }
 
     setCanBackdropClose(false);
+    setIsFlippedToFront(false);
     const isPositive =
       !card.impactText.startsWith('-') &&
       !card.badge.toLowerCase().includes('фінмоніторинг');
@@ -430,10 +433,11 @@ export const EventCardWowOverlay: React.FC<{
       sound.playCardDrawFromDeck();
     }, 760);
 
-    // Act 4 (2.70s): 3D 180-degree flip passes 90° apex -> holographic reveal chime
+    // Act 4 (2.665s = 0.82 * 3.25s): 3D 180-degree flip passes exact 90° edge-on apex -> swap visible face & play chime
     const revealTimer = setTimeout(() => {
+      setIsFlippedToFront(true);
       sound.playCardReveal(isPositive);
-    }, 2700);
+    }, 2665);
 
     // Replenish deck visual top card & allow backdrop tap-to-close once card is revealed
     const replenishTimer = setTimeout(() => {
@@ -709,27 +713,29 @@ export const EventCardWowOverlay: React.FC<{
                       isDiia ? 180 : -180,
                       isDiia ? 180 : -180,
                       isDiia ? 174 : -174,
-                      isDiia ? 169 : -169,
+                      isDiia ? 168 : -168,
+                      isDiia ? 90 : -90,
                       0,
                       0,
                     ],
-                    rotateX: [0, 0, 9, 12, -2, 0],
+                    rotateX: [0, 0, 9, 12, 5, -2, 0],
                   }}
                   transition={{
                     duration: DEAL_DURATION_S,
-                    times: [0, 0.23, 0.35, 0.72, 0.94, 1],
+                    times: [0, 0.23, 0.35, 0.72, 0.82, 0.94, 1],
                     ease: [
                       'linear',
                       'easeOut',
                       'easeInOut',
-                      [0.22, 1, 0.36, 1],
+                      'easeIn',
                       'easeOut',
+                      'linear',
                     ],
                   }}
                   style={{ transformStyle: 'preserve-3d' }}
                   className="relative w-full"
                 >
-                  {/* --- CARD BACK FACE (Visible on deck, during peel-off & throughout the 1.13s carry!) --- */}
+                  {/* --- CARD BACK FACE (Visible on deck, during peel-off & throughout the carry until the exact 90° flip apex!) --- */}
                   <div
                     style={{
                       backfaceVisibility: 'hidden',
@@ -737,6 +743,10 @@ export const EventCardWowOverlay: React.FC<{
                       transform: 'rotateY(180deg)',
                     }}
                     className={`absolute inset-0 ${
+                      isFlippedToFront
+                        ? 'invisible opacity-0 pointer-events-none'
+                        : 'visible opacity-100'
+                    } ${
                       isPhoneBoard ? 'rounded-[18px] p-2.5' : 'rounded-[22px] p-4'
                     } border-2 overflow-hidden flex flex-col justify-between bg-slate-950 shadow-[0_30px_68px_-10px_rgba(0,0,0,0.88)] ${
                       isDiia ? 'border-sky-300/90' : 'border-amber-300/90'
@@ -848,7 +858,7 @@ export const EventCardWowOverlay: React.FC<{
 
                     <div
                       className={`relative z-10 my-auto flex flex-col items-center text-center ${
-                        isPhoneBoard ? 'py-1.5' : 'py-4'
+                        isPhoneBoard ? 'gap-2 py-1' : 'gap-3 py-3'
                       }`}
                     >
                       <div
@@ -856,7 +866,7 @@ export const EventCardWowOverlay: React.FC<{
                           isPhoneBoard
                             ? 'w-11 h-11 rounded-xl'
                             : 'w-16 h-16 rounded-2xl'
-                        } bg-slate-950/78 backdrop-blur-md border-2 flex items-center justify-center shadow-2xl ${
+                        } bg-slate-950/90 border-2 flex items-center justify-center shadow-2xl ${
                           isDiia
                             ? 'border-sky-300/65 shadow-sky-500/30'
                             : 'border-amber-300/65 shadow-amber-500/30'
@@ -876,35 +886,48 @@ export const EventCardWowOverlay: React.FC<{
                           />
                         )}
                       </div>
-                    </div>
 
-                    <div className="relative z-10 text-center board-card-caption">
                       <div
-                        className={`${
-                          isPhoneBoard ? 'text-[8.5px]' : 'text-[10px]'
-                        } font-black uppercase tracking-[0.14em] ${
-                          isDiia ? 'text-sky-200' : 'text-amber-200'
+                        className={`px-3 py-1 rounded-xl bg-slate-950/88 border ${
+                          isDiia
+                            ? 'border-sky-300/45 shadow-[0_6px_18px_rgba(2,6,23,0.85)]'
+                            : 'border-amber-300/45 shadow-[0_6px_18px_rgba(2,6,23,0.85)]'
                         }`}
                       >
-                        {isDiia ? 'Колода реформ' : 'Колода шансу'}
-                      </div>
-                      <div
-                        className={`font-display font-extrabold ${
-                          isPhoneBoard ? 'text-sm' : 'text-lg'
-                        } text-white mt-0.5`}
-                      >
-                        {isDiia ? 'Цифровий Пуш' : 'Фонд Єдності'}
+                        <div
+                          className={`${
+                            isPhoneBoard ? 'text-[8px]' : 'text-[9.5px]'
+                          } font-black uppercase tracking-[0.14em] ${
+                            isDiia ? 'text-sky-200' : 'text-amber-200'
+                          }`}
+                        >
+                          {isDiia ? 'Колода реформ' : 'Колода шансу'}
+                        </div>
+                        <div
+                          className={`font-display font-extrabold ${
+                            isPhoneBoard ? 'text-xs' : 'text-base'
+                          } text-white leading-tight mt-0.5`}
+                        >
+                          {isDiia ? 'Цифровий Пуш' : 'Фонд Єдності'}
+                        </div>
                       </div>
                     </div>
+
+                    <div className="relative z-10 h-3" />
                   </div>
 
-                  {/* --- CARD FRONT FACE (Illuminated Revealed Message & Impact!) --- */}
+                  {/* --- CARD FRONT FACE (Illuminated Revealed Message & Impact — Hidden until the exact 90° flip apex so WebKit never bleeds mirrored text onto the back!) --- */}
                   <div
                     style={{
                       backfaceVisibility: 'hidden',
                       WebkitBackfaceVisibility: 'hidden',
+                      transform: 'rotateY(0deg)',
                     }}
                     className={`relative ${
+                      isFlippedToFront
+                        ? 'visible opacity-100'
+                        : 'invisible opacity-0 pointer-events-none'
+                    } ${
                       isPhoneBoard ? 'rounded-[18px]' : 'rounded-[22px]'
                     } overflow-hidden border-2 bg-gradient-to-b from-[#10192e] via-[#0b1222] to-[#070c17] text-white shadow-[0_28px_70px_-10px_rgba(0,0,0,0.88)] ${
                       isDiia
@@ -1003,10 +1026,10 @@ export const EventCardWowOverlay: React.FC<{
                             isPhoneBoard
                               ? 'bottom-1.5 left-2 px-2 py-0.5 text-[8px]'
                               : 'bottom-2 left-2.5 px-2.5 py-0.5 text-[9.5px]'
-                          } inline-flex items-center gap-1 rounded-lg backdrop-blur-md border font-black uppercase tracking-wider shadow ${
+                          } inline-flex items-center gap-1 rounded-lg border font-black uppercase tracking-wider shadow ${
                             isDiia
-                              ? 'bg-slate-950/82 border-sky-300/45 text-sky-200'
-                              : 'bg-slate-950/82 border-amber-300/45 text-amber-200'
+                              ? 'bg-slate-950/92 border-sky-300/45 text-sky-200'
+                              : 'bg-slate-950/92 border-amber-300/45 text-amber-200'
                           }`}
                         >
                           <Sparkles className="w-2.5 h-2.5 shrink-0" />
