@@ -145,6 +145,11 @@ export const App: React.FC = () => {
     'chat'
   );
   const [mobileSeenChatCount, setMobileSeenChatCount] = useState<number>(0);
+  const portraitBoardSlotRef = useRef<HTMLDivElement | null>(null);
+  const [portraitBoardSizePx, setPortraitBoardSizePx] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
 
   const clientRef = useRef<HybridGameClient | null>(null);
   const gameStateRef = useRef<GameState | null>(null);
@@ -633,7 +638,6 @@ export const App: React.FC = () => {
   ) => {
     if (roomBusy) return;
     sound.playClick();
-    requestNativeMobileLandscape();
     setMobileTab('board');
     setRoomBusy(true);
     emitWithAck(
@@ -753,6 +757,44 @@ export const App: React.FC = () => {
     (gameState.status === 'playing' || gameState.status === 'finished');
 
   const mobileOrient = useMobileViewportAndOrientation(Boolean(isInBoardMatch));
+
+  useEffect(() => {
+    if (
+      !isInBoardMatch ||
+      isDesktopXl ||
+      mobileOrient.isEffectiveMobileLandscape ||
+      mobileTab !== 'board'
+    ) {
+      return;
+    }
+    const el = portraitBoardSlotRef.current;
+    if (!el) return;
+    const measure = () => {
+      const w = Math.round(el.clientWidth || el.offsetWidth);
+      const h = Math.round(el.clientHeight || el.offsetHeight);
+      if (w > 180 && h > 180) {
+        const side = Math.max(240, Math.min(w, h, 680));
+        setPortraitBoardSizePx((prev) =>
+          prev && prev.width === side && prev.height === side
+            ? prev
+            : { width: side, height: side }
+        );
+      }
+    };
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [
+    isInBoardMatch,
+    isDesktopXl,
+    mobileOrient.isEffectiveMobileLandscape,
+    mobileTab,
+    mobileOrient.vw,
+    mobileOrient.vh,
+    selectedCellIndex,
+  ]);
 
   const activePlayer = gameState?.players[gameState.turnIndex];
   const isMyTurn = activePlayer?.id === playerId;
@@ -967,7 +1009,6 @@ export const App: React.FC = () => {
               clientRef.current?.emit('game:remove_player', { targetId })
             }
             onStartGame={() => {
-              requestNativeMobileLandscape();
               emitWithAck('game:start');
             }}
             onSendChat={handleSendChat}
@@ -979,7 +1020,7 @@ export const App: React.FC = () => {
           className={
             mobileOrient.isEffectiveMobileLandscape
               ? 'overflow-hidden diia-mesh-bg vyshyvanka-pattern flex items-stretch justify-center select-none'
-              : 'min-h-dvh lg:h-dvh lg:overflow-hidden diia-mesh-bg vyshyvanka-pattern flex items-stretch justify-center p-1.5 sm:p-2 2xl:p-3'
+              : 'h-dvh overflow-hidden diia-mesh-bg vyshyvanka-pattern flex items-stretch justify-center p-1 sm:p-2 2xl:p-3'
           }
         >
           {/* Rules Modal rendered INSIDE the match stage so it appears horizontally in landscape */}
@@ -1178,9 +1219,10 @@ export const App: React.FC = () => {
             </div>
           ) : (
             /* ================================================================
-               PORTRAIT TABLET & OPTIONAL PORTRAIT PHONE SHELL (< 1280px)
+               PORTRAIT MOBILE & TABLET PRO SHELL (< 1024px)
+               Fits 100% on one screen (h-dvh) with zero vertical page scrolling!
                ================================================================ */
-            <div className="w-full max-w-3xl min-h-[calc(100dvh-12px)] flex flex-col justify-between gap-2 pb-10 sm:pb-0">
+            <div className="w-full max-w-3xl h-full min-h-0 flex flex-col justify-between gap-1 sm:gap-2 overflow-hidden">
               <MobileMatchHeader
                 gameState={gameState}
                 soundEnabled={soundEnabled}
@@ -1206,27 +1248,39 @@ export const App: React.FC = () => {
               />
 
               {/* Active Mobile / Tablet Tab View */}
-              <main className="flex-1 min-h-0 flex flex-col gap-2">
+              <main className="flex-1 min-h-0 flex flex-col gap-1 sm:gap-1.5 overflow-hidden">
                 {mobileTab === 'board' && (
                   <>
                     <MobilePlayerStrip
                       gameState={gameState}
                       myPlayerId={playerId}
+                      canTradeNow={canTradeNow}
                       recentReactions={recentReactions}
                       onSelectPlayerCell={(pos) => setSelectedCellIndex(pos)}
                       onSwitchToPlayersTab={() => setMobileTab('players')}
+                      onOpenTradeWith={(targetId) => {
+                        setTradePartnerId(targetId);
+                        setTradeModalOpen(true);
+                      }}
                     />
 
-                    <div className="flex-1 flex items-center justify-center w-full max-w-[min(100%,680px)] mx-auto">
-                      {renderBoardElement(gameState)}
+                    <div
+                      ref={portraitBoardSlotRef}
+                      className="flex-1 min-h-0 flex items-center justify-center w-full max-w-[min(100%,680px)] mx-auto overflow-hidden"
+                    >
+                      {renderBoardElement(gameState, portraitBoardSizePx)}
                     </div>
 
                     <MobileSelectedCellBar
                       gameState={gameState}
                       myPlayerId={playerId}
                       selectedCellIndex={selectedCellIndex}
+                      onSelectCell={(idx) => setSelectedCellIndex(idx)}
                       onOpenFullInspector={() => setMobileTab('inspector')}
                       onBuildBranch={handleBuildBranch}
+                      onSellBranch={handleSellBranch}
+                      onMortgage={handleMortgage}
+                      onUnmortgage={handleUnmortgage}
                     />
                   </>
                 )}
@@ -1337,8 +1391,8 @@ export const App: React.FC = () => {
                 )}
               </main>
 
-              {/* Sticky Thumb-Friendly Bottom Navigation Dock */}
-              <div className="sticky bottom-1.5 z-30">
+              {/* Thumb-Friendly Bottom Navigation Dock */}
+              <div className="shrink-0 z-30 pb-[env(safe-area-inset-bottom)]">
                 <MobileBottomNav
                   activeTab={mobileTab}
                   onSelectTab={(tab) => {

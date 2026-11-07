@@ -568,14 +568,14 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
 
   const recentLogs = gameState.logs.slice(0, isCompactBoard ? 2 : 3);
 
-  const gridGap = isUltraCompact ? '2px' : isCompactBoard ? '3.5px' : isLaptopBoard ? '4px' : '5px';
+  const gridGap = isUltraCompact ? '1.5px' : isCompactBoard ? '3.5px' : isLaptopBoard ? '4px' : '5px';
   const gridCols = isPhoneBoard
-    ? '1.42fr repeat(9, 1fr) 1.42fr'
+    ? '1.46fr repeat(9, 1fr) 1.46fr'
     : isCompactBoard || isLaptopBoard
       ? '1.45fr repeat(9, 1fr) 1.45fr'
       : '1.60fr repeat(9, 1fr) 1.60fr';
   const gridRows = isPhoneBoard
-    ? '1.42fr repeat(9, 1fr) 1.42fr'
+    ? '1.28fr repeat(9, 1fr) 1.28fr'
     : '1.36fr repeat(9, 1fr) 1.36fr';
   const selectedBoardSector = BOARD_CELLS[selectedCellIndex]?.sector ?? null;
   const activeHoverSector = hoveredSector ?? localHoveredSector;
@@ -677,14 +677,14 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
 
           // Bold, Unmistakable Classic-Monopoly Inner Color Header Plate (14.5px / 16px on desktop)
           const ribbonThicknessH = isPhoneBoard
-            ? 'h-[6.5px]'
+            ? 'h-[5.5px]'
             : isCompactBoard
               ? 'h-[11.5px]'
               : isWideBoard
                 ? 'h-[16px]'
                 : 'h-[14.5px]';
           const ribbonThicknessW = isPhoneBoard
-            ? 'w-[6.5px]'
+            ? 'w-[5px]'
             : isCompactBoard
               ? 'w-[11.5px]'
               : isWideBoard
@@ -1335,7 +1335,7 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
                   className={`relative z-[4] w-full h-full flex flex-col justify-end overflow-hidden ${
                     pos.side === 'left'
                       ? isPhoneBoard
-                        ? `pl-1 ${hasInnerSectorBand ? 'pr-[8px]' : 'pr-1.5'} py-0.5`
+                        ? `pl-[2.5px] ${hasInnerSectorBand ? 'pr-[6.5px]' : 'pr-1'} py-[1.5px]`
                         : `${isCompactBoard || isLaptopBoard ? 'pl-1.5' : 'pl-2'} ${
                             hasInnerSectorBand
                               ? isCompactBoard
@@ -1348,7 +1348,7 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
                                 : 'pr-2'
                           } pt-1 pb-1`
                       : isPhoneBoard
-                        ? `pr-1 ${hasInnerSectorBand ? 'pl-[8px]' : 'pl-1.5'} py-0.5`
+                        ? `pr-[2.5px] ${hasInnerSectorBand ? 'pl-[6.5px]' : 'pl-1'} py-[1.5px]`
                         : `${isCompactBoard || isLaptopBoard ? 'pr-1.5' : 'pr-2'} ${
                             hasInnerSectorBand
                               ? isCompactBoard
@@ -1373,9 +1373,9 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
                         pos.side === 'right' ? 'text-right' : 'text-left'
                       } ${
                         isUltraCompact
-                          ? 'text-[6.4px] leading-[1.03]'
+                          ? 'text-[6.8px] leading-[1.02] tracking-[-0.03em]'
                           : isPhoneBoard
-                            ? 'text-[7.2px] leading-[1.05]'
+                            ? 'text-[7.4px] leading-[1.04] tracking-[-0.025em]'
                             : isCompactBoard
                               ? 'text-[8px] leading-[1.05] tracking-[-0.02em]'
                               : isLaptopBoard
@@ -1487,9 +1487,9 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
                     <div
                       className={`w-full board-card-caption ${
                         isUltraCompact
-                          ? 'text-[6px] leading-[1.03]'
+                          ? 'text-[6.5px] leading-[1.01] tracking-[-0.035em]'
                           : isPhoneBoard
-                            ? 'text-[6.8px] leading-[1.05]'
+                            ? 'text-[7.1px] leading-[1.03] tracking-[-0.025em]'
                             : isCompactBoard
                               ? 'text-[7.5px] leading-[1.04] tracking-[-0.025em]'
                               : isLaptopBoard

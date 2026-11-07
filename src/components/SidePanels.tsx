@@ -1576,38 +1576,72 @@ export const CompanyInspectorContent: React.FC<{
       )}
 
       {isPurchasableCell(cell) && (
-        <div className="space-y-2 pt-1 border-t border-[var(--border-glass)]">
+        <div className="space-y-1.5 pt-1 border-t border-[var(--border-glass)]">
           {cell.type === 'company' && cell.rent && (
-            <div className="rounded-xl bg-[var(--surface-subtle)] border border-[var(--border-glass)] p-2.5 space-y-0.5 text-[11px] tabular-nums">
-              {[
-                { label: 'Базова оренда', val: cell.rent[0], lvl: 0 },
-                { label: '1 Філія ★', val: cell.rent[1], lvl: 1 },
-                { label: '2 Філії ★★', val: cell.rent[2], lvl: 2 },
-                { label: '3 Філії ★★★', val: cell.rent[3], lvl: 3 },
-                { label: '4 Філії ★★★★', val: cell.rent[4], lvl: 4 },
-                { label: '👑 Головний Холдинг', val: cell.rent[5], lvl: 5 },
-              ].map((row) => {
-                const active =
-                  (prop?.branches ?? -1) === row.lvl && Boolean(owner);
-                return (
-                  <div
-                    key={row.lvl}
-                    className={`flex items-center justify-between px-1.5 py-0.5 rounded ${
-                      active
-                        ? 'bg-blue-600 text-white font-extrabold'
-                        : 'font-semibold'
-                    }`}
-                  >
-                    <span>{row.label}</span>
-                    <span className="whitespace-nowrap">
-                      {row.lvl === 0 && owner && currentRent === row.val * 2
-                        ? `${formatMoney(row.val * 2)} (×2)`
-                        : formatMoney(row.val)}
-                    </span>
-                  </div>
-                );
-              })}
-              <div className="flex items-center justify-between pt-1 mt-1 border-t border-[var(--border-glass)] text-[10px] font-bold text-[var(--text-muted)]">
+            <div
+              className={`rounded-xl bg-[var(--surface-subtle)] border border-[var(--border-glass)] ${
+                ultraCompact ? 'p-1.5 text-[9.5px]' : 'p-2.5 space-y-0.5 text-[11px]'
+              } tabular-nums`}
+            >
+              <div className={ultraCompact ? 'grid grid-cols-2 gap-1' : 'space-y-0.5'}>
+                {[
+                  {
+                    label: ultraCompact ? 'Базова' : 'Базова оренда',
+                    val: cell.rent[0],
+                    lvl: 0,
+                  },
+                  {
+                    label: ultraCompact ? '1 філія ★' : '1 Філія ★',
+                    val: cell.rent[1],
+                    lvl: 1,
+                  },
+                  {
+                    label: ultraCompact ? '2 філії ★★' : '2 Філії ★★',
+                    val: cell.rent[2],
+                    lvl: 2,
+                  },
+                  {
+                    label: ultraCompact ? '3 філії ★★★' : '3 Філії ★★★',
+                    val: cell.rent[3],
+                    lvl: 3,
+                  },
+                  {
+                    label: ultraCompact ? '4 філії ★4' : '4 Філії ★★★★',
+                    val: cell.rent[4],
+                    lvl: 4,
+                  },
+                  {
+                    label: ultraCompact ? '👑 Холдинг' : '👑 Головний Холдинг',
+                    val: cell.rent[5],
+                    lvl: 5,
+                  },
+                ].map((row) => {
+                  const active =
+                    (prop?.branches ?? -1) === row.lvl && Boolean(owner);
+                  return (
+                    <div
+                      key={row.lvl}
+                      className={`flex items-center justify-between gap-1 px-1.5 py-0.5 rounded ${
+                        active
+                          ? 'bg-blue-600 text-white font-extrabold'
+                          : 'font-semibold'
+                      }`}
+                    >
+                      <span className="truncate">{row.label}</span>
+                      <span className="whitespace-nowrap font-bold">
+                        {row.lvl === 0 && owner && currentRent === row.val * 2
+                          ? ultraCompact
+                            ? `${formatCompactSlotPrice(row.val * 2)}×2`
+                            : `${formatMoney(row.val * 2)} (×2)`
+                          : ultraCompact
+                            ? `${formatCompactSlotPrice(row.val)} ₴`
+                            : formatMoney(row.val)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex items-center justify-between pt-1 mt-1 border-t border-[var(--border-glass)] text-[9.5px] font-bold text-[var(--text-muted)]">
                 <span>Філія: {formatMoney(cell.branchCost ?? 0)}</span>
                 <span>Застава: {formatMoney(getMortgageValue(cell.index))}</span>
               </div>
@@ -2288,56 +2322,55 @@ export const MobileMatchHeader: React.FC<{
   };
 
   return (
-    <header className="glass-panel rounded-2xl px-2.5 sm:px-3.5 py-2 flex items-center justify-between gap-1.5 shrink-0 overflow-hidden">
-      <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
+    <header className="glass-panel rounded-xl sm:rounded-2xl px-2 sm:px-3.5 py-1.5 flex items-center justify-between gap-1.5 shrink-0 overflow-hidden">
+      <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1 overflow-hidden">
         <MagnatBrandIcon size="xs" />
-        <div className="min-w-0 flex-1 overflow-hidden">
-          <div className="flex items-center gap-1.5 min-w-0">
+        <div className="min-w-0 flex-1 overflow-hidden flex items-center gap-1.5 flex-nowrap">
+          <div className="hidden sm:flex items-center shrink-0">
             <MagnatWordmark size="xs" />
           </div>
-          <div className="flex items-center gap-1.5 text-[9.5px] font-extrabold text-[var(--text-muted)] tabular-nums mt-0.5 overflow-hidden">
-            <button
-              onClick={copyRoomLink}
-              className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-blue-600/15 text-blue-700 dark:text-sky-300 text-[9.5px] font-extrabold cursor-pointer whitespace-nowrap shrink-0"
-            >
-              <span>{gameState.roomCode}</span>
-              {copied ? (
-                <Check className="w-2.5 h-2.5 text-emerald-500" />
-              ) : (
-                <Copy className="w-2.5 h-2.5" />
-              )}
-            </button>
-            <span className="text-amber-600 dark:text-amber-400 whitespace-nowrap truncate">
-              🛡 {formatMoney(gameState.zsuTotalDonated)}
-            </span>
-            {gameState.settings.karpatyBonusEnabled && (
-              <span className="text-emerald-600 dark:text-emerald-400 whitespace-nowrap hidden sm:inline">
-                🏔 {formatMoney(gameState.karpatyFund)}
-              </span>
+          <button
+            onClick={copyRoomLink}
+            title="Скопіювати посилання на стіл"
+            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg bg-blue-600/15 text-blue-700 dark:text-sky-300 text-[10px] font-black cursor-pointer whitespace-nowrap shrink-0"
+          >
+            <span>{gameState.roomCode}</span>
+            {copied ? (
+              <Check className="w-2.5 h-2.5 text-emerald-500" />
+            ) : (
+              <Copy className="w-2.5 h-2.5" />
             )}
-          </div>
+          </button>
+          <span className="text-[10px] font-extrabold text-amber-600 dark:text-amber-400 whitespace-nowrap tabular-nums">
+            🛡 {formatMoney(gameState.zsuTotalDonated)}
+          </span>
+          {gameState.settings.karpatyBonusEnabled && (
+            <span className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 whitespace-nowrap tabular-nums hidden sm:inline">
+              🏔 {formatMoney(gameState.karpatyFund)}
+            </span>
+          )}
         </div>
       </div>
 
       <div className="flex items-center gap-0.5 shrink-0">
-        {onSwitchToLandscape && (
-          <button
-            onClick={onSwitchToLandscape}
-            title="Перемкнути в горизонтальний режим гри"
-            className="px-2 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-extrabold flex items-center gap-1 mr-0.5 cursor-pointer shadow-xs"
-          >
-            <Smartphone className="w-3.5 h-3.5 rotate-90" />
-            <span>Горизонт.</span>
-          </button>
-        )}
         {canTradeNow && (
           <button
             onClick={onOpenTradeModal}
             title="Смарт-Угода"
-            className="p-1.5 sm:px-2 sm:py-1.5 rounded-xl bg-amber-400/20 text-amber-600 dark:text-amber-300 text-[10.5px] font-extrabold flex items-center gap-1 cursor-pointer"
+            className="hidden sm:flex px-2 py-1 rounded-xl bg-amber-400/20 text-amber-600 dark:text-amber-300 border border-amber-400/35 text-[10px] font-extrabold items-center gap-1 cursor-pointer"
           >
             <Handshake className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Угода</span>
+            <span>Угода</span>
+          </button>
+        )}
+        {onSwitchToLandscape && (
+          <button
+            onClick={onSwitchToLandscape}
+            title="Повернути інтерфейс горизонтально (альбомний режим)"
+            className="px-2 py-1 rounded-xl bg-blue-600/16 hover:bg-blue-600 hover:text-white text-blue-600 dark:text-sky-300 border border-blue-500/30 text-[10px] font-extrabold flex items-center gap-1 cursor-pointer transition"
+          >
+            <Smartphone className="w-3.5 h-3.5 rotate-90 shrink-0" />
+            <span>Альбом</span>
           </button>
         )}
         <button
@@ -2345,7 +2378,7 @@ export const MobileMatchHeader: React.FC<{
           title="Правила гри"
           className="p-1.5 rounded-xl hover:bg-slate-500/15 transition cursor-pointer"
         >
-          <BookOpen className="w-4 h-4" />
+          <BookOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         </button>
         <button
           onClick={onToggleSound}
@@ -2353,9 +2386,9 @@ export const MobileMatchHeader: React.FC<{
           className="p-1.5 rounded-xl hover:bg-slate-500/15 transition cursor-pointer"
         >
           {soundEnabled ? (
-            <Volume2 className="w-4 h-4" />
+            <Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           ) : (
-            <VolumeX className="w-4 h-4 opacity-50" />
+            <VolumeX className="w-3.5 h-3.5 sm:w-4 sm:h-4 opacity-50" />
           )}
         </button>
         <button
@@ -2364,9 +2397,9 @@ export const MobileMatchHeader: React.FC<{
           className="p-1.5 rounded-xl hover:bg-slate-500/15 transition cursor-pointer"
         >
           {darkMode ? (
-            <Sun className="w-4 h-4 text-amber-400" />
+            <Sun className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />
           ) : (
-            <Moon className="w-4 h-4" />
+            <Moon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           )}
         </button>
         <button
@@ -2374,7 +2407,7 @@ export const MobileMatchHeader: React.FC<{
           title="Вийти в головне меню"
           className="p-1.5 rounded-xl hover:bg-rose-500/15 text-rose-500 transition cursor-pointer"
         >
-          <LogOut className="w-4 h-4" />
+          <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         </button>
       </div>
     </header>
@@ -2384,32 +2417,42 @@ export const MobileMatchHeader: React.FC<{
 export const MobilePlayerStrip: React.FC<{
   gameState: GameState;
   myPlayerId: string;
+  canTradeNow?: boolean;
   recentReactions: Record<string, ChatMessage>;
   onSelectPlayerCell: (pos: number) => void;
   onSwitchToPlayersTab: () => void;
+  onOpenTradeWith?: (targetPlayerId: string) => void;
 }> = ({
   gameState,
   myPlayerId,
+  canTradeNow = false,
   recentReactions,
   onSelectPlayerCell,
   onSwitchToPlayersTab,
+  onOpenTradeWith,
 }) => {
   const { rankByPlayer } = usePlayerRankings(gameState);
+  const mePlayer = gameState.players.find((pl) => pl.id === myPlayerId);
 
   return (
-    <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 shrink-0">
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 shrink-0">
       {gameState.players.map((p, idx) => {
         const isTurn =
           idx === gameState.turnIndex && gameState.status === 'playing';
         const isMe = p.id === myPlayerId;
+        const isAlly = areTeammates(
+          gameState.settings.gameMode,
+          mePlayer,
+          p
+        );
         const rank = rankByPlayer[p.id] ?? idx + 1;
         const bubble = recentReactions[p.id];
-        const ownedCount = BOARD_CELLS.filter(
+        const ownedCells = BOARD_CELLS.filter(
           (c) => gameState.properties[c.index]?.ownerId === p.id
-        ).length;
+        );
 
         return (
-          <button
+          <div
             key={p.id}
             onClick={() => {
               sound.playClick();
@@ -2418,9 +2461,9 @@ export const MobilePlayerStrip: React.FC<{
             onDoubleClick={onSwitchToPlayersTab}
             style={{
               borderColor: isTurn ? p.color : undefined,
-              boxShadow: isTurn ? `0 6px 18px -6px ${p.color}88` : undefined,
+              boxShadow: isTurn ? `0 4px 14px -5px ${p.color}88` : undefined,
             }}
-            className={`relative flex items-center gap-2 px-2.5 py-1.5 rounded-xl shrink-0 text-left transition cursor-pointer ${
+            className={`relative flex items-center justify-between gap-1.5 pl-2.5 pr-1.5 py-1 rounded-xl min-w-0 overflow-hidden text-left transition cursor-pointer ${
               p.isBankrupt
                 ? 'opacity-40 grayscale glass-panel'
                 : isTurn
@@ -2428,59 +2471,96 @@ export const MobilePlayerStrip: React.FC<{
                   : 'glass-panel'
             }`}
           >
+            {!p.isBankrupt && (
+              <span
+                style={{ backgroundColor: p.color }}
+                className="pointer-events-none absolute left-0 top-1.5 bottom-1.5 w-[3.5px] rounded-r-full opacity-95"
+              />
+            )}
             {bubble && (
-              <span className="absolute -top-2 right-1 z-20 px-1.5 py-0.2 rounded-full bg-amber-400 text-slate-950 text-[8.5px] font-black shadow max-w-[110px] truncate">
+              <span className="absolute -top-1.5 right-1 z-20 px-1.5 py-0.2 rounded-full bg-amber-400 text-slate-950 text-[8px] font-black shadow max-w-[100px] truncate">
                 {bubble.text}
               </span>
             )}
-            <div className="relative shrink-0">
-              <TokenAvatar token={p.token} color={p.color} size={26} />
-              <span
-                className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full text-[7.5px] font-black flex items-center justify-center ${
-                  rank === 1
-                    ? 'bg-amber-400 text-slate-950'
-                    : 'bg-slate-200 text-slate-800 dark:bg-slate-900 dark:text-white'
-                }`}
-              >
-                {rank}
-              </span>
-            </div>
-            <div className="leading-tight">
-              <div className="flex items-center gap-1">
-                <span className="text-[11px] font-extrabold truncate max-w-[78px] sm:max-w-[110px]">
-                  {p.name}
+
+            <div className="flex items-center gap-1.5 min-w-0 flex-1">
+              <div className="relative shrink-0">
+                <TokenAvatar token={p.token} color={p.color} size={22} />
+                <span
+                  className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full text-[7px] font-black flex items-center justify-center ${
+                    rank === 1
+                      ? 'bg-amber-400 text-slate-950'
+                      : 'bg-slate-200 text-slate-800 dark:bg-slate-900 dark:text-white'
+                  }`}
+                >
+                  {rank}
                 </span>
-                {isMe && (
-                  <span className="px-1 rounded bg-blue-600 text-white text-[7.5px] font-black">
-                    ВИ
+              </div>
+
+              <div className="min-w-0 flex-1 leading-tight">
+                <div className="flex items-center gap-1 min-w-0">
+                  <span className="text-[10.5px] font-extrabold truncate">
+                    {getShortPlayerLabel(p)}
                   </span>
-                )}
-                {!isMe &&
-                  areTeammates(
-                    gameState.settings.gameMode,
-                    gameState.players.find((pl) => pl.id === myPlayerId),
-                    p
-                  ) && (
+                  {isMe && (
+                    <span className="px-1 rounded bg-blue-600 text-white text-[7px] font-black shrink-0">
+                      ВИ
+                    </span>
+                  )}
+                  {!isMe && isAlly && (
                     <span
                       title="Ваш напарник"
-                      className="px-1 rounded bg-sky-500/20 text-sky-600 dark:text-sky-300 border border-sky-400/40 text-[7.5px] font-black"
+                      className="px-1 rounded bg-sky-500/20 text-sky-600 dark:text-sky-300 border border-sky-400/40 text-[7px] font-black shrink-0"
                     >
                       🤝
                     </span>
                   )}
-              </div>
-              <div className="flex items-center gap-1 text-[10px] font-black tabular-nums whitespace-nowrap">
-                <span className="text-emerald-600 dark:text-amber-300">
-                  {p.isBankrupt ? 'Банкрут' : formatMoney(p.money)}
-                </span>
-                {!p.isBankrupt && ownedCount > 0 && (
-                  <span className="text-[9px] font-bold text-[var(--text-muted)]">
-                    • {ownedCount}🏢
+                  {isTurn && (
+                    <span className="px-1 rounded bg-amber-400/25 text-amber-600 dark:text-amber-300 text-[7px] font-black shrink-0">
+                      ХІД
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between gap-1 mt-0.5">
+                  <span className="text-[10px] font-black text-emerald-600 dark:text-amber-300 tabular-nums whitespace-nowrap">
+                    {p.isBankrupt ? 'Банкрут' : formatMoney(p.money)}
                   </span>
-                )}
+                  {!p.isBankrupt && ownedCells.length > 0 && (
+                    <div className="flex items-center gap-0.5 overflow-hidden shrink-0">
+                      {ownedCells.slice(0, 4).map((c) => (
+                        <span
+                          key={c.index}
+                          style={{ backgroundColor: c.color ?? '#94A3B8' }}
+                          className="w-1.5 h-1.5 rounded-full shrink-0 ring-[0.5px] ring-black/30"
+                        />
+                      ))}
+                      {ownedCells.length > 4 && (
+                        <span className="text-[8px] font-extrabold text-[var(--text-muted)] tabular-nums">
+                          +{ownedCells.length - 4}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </button>
+
+            {canTradeNow && !isMe && !p.isBankrupt && onOpenTradeWith && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  sound.playClick();
+                  onOpenTradeWith(p.id);
+                }}
+                title={`Смарт-Угода з ${p.name}`}
+                className="p-1.5 rounded-lg bg-amber-400/20 hover:bg-amber-400 hover:text-slate-950 text-amber-600 dark:text-amber-300 transition cursor-pointer shrink-0"
+              >
+                <Handshake className="w-3 h-3" />
+              </button>
+            )}
+          </div>
         );
       })}
     </div>
@@ -2491,14 +2571,22 @@ export const MobileSelectedCellBar: React.FC<{
   gameState: GameState;
   myPlayerId: string;
   selectedCellIndex: number;
+  onSelectCell?: (idx: number) => void;
   onOpenFullInspector: () => void;
   onBuildBranch: (cellIndex: number) => void;
+  onSellBranch?: (cellIndex: number) => void;
+  onMortgage?: (cellIndex: number) => void;
+  onUnmortgage?: (cellIndex: number) => void;
 }> = ({
   gameState,
   myPlayerId,
   selectedCellIndex,
+  onSelectCell,
   onOpenFullInspector,
   onBuildBranch,
+  onSellBranch,
+  onMortgage,
+  onUnmortgage,
 }) => {
   const cell = BOARD_CELLS[selectedCellIndex] ?? BOARD_CELLS[0];
   const prop = gameState.properties[cell.index];
@@ -2507,6 +2595,7 @@ export const MobileSelectedCellBar: React.FC<{
     : null;
   const me = gameState.players.find((p) => p.id === myPlayerId);
   const activePlayer = gameState.players[gameState.turnIndex];
+  const isOwnedByMe = prop?.ownerId === myPlayerId;
   const canManageNow =
     activePlayer?.id === myPlayerId &&
     (gameState.phase === 'PRE_ROLL' ||
@@ -2515,89 +2604,209 @@ export const MobileSelectedCellBar: React.FC<{
       gameState.phase === 'DEBT_RESOLUTION');
 
   const buildCheck =
-    prop?.ownerId === myPlayerId && me && cell.type === 'company'
+    isOwnedByMe && me && cell.type === 'company'
       ? canBuildBranch(myPlayerId, cell.index, me.money, gameState.properties)
       : { ok: false };
+  const sellCheck =
+    isOwnedByMe && cell.type === 'company'
+      ? canSellBranch(myPlayerId, cell.index, gameState.properties)
+      : { ok: false };
+  const mortgageCheck = isOwnedByMe
+    ? canMortgageProperty(myPlayerId, cell.index, gameState.properties)
+    : { ok: false };
+
+  const currentRent = isPurchasableCell(cell)
+    ? calculateRent(cell.index, gameState.properties, 7)
+    : 0;
 
   const art = getCellVisualArtwork(cell);
 
   return (
-    <div className="glass-panel rounded-2xl p-2.5 flex items-center justify-between gap-2.5 shrink-0">
-      <div
-        onClick={onOpenFullInspector}
-        className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer"
-      >
-        <div className="relative w-11 h-11 rounded-xl overflow-hidden border border-[var(--border-strong)] shrink-0 bg-slate-950">
-          <img
-            src={art.imageSrc}
-            alt={cell.name}
-            style={{ objectPosition: art.objectPosition }}
-            className={`w-full h-full object-cover ${getImageExposureClass(art.imageSrc)}`}
-          />
-          {cell.color && (
-            <span
-              style={{ backgroundColor: cell.color }}
-              className="absolute bottom-0 inset-x-0 h-1.5"
+    <div className="glass-panel rounded-xl sm:rounded-2xl px-2 py-1.5 flex flex-col gap-1.5 shrink-0">
+      <div className="flex items-center justify-between gap-1.5">
+        {onSelectCell && (
+          <button
+            type="button"
+            onClick={() => {
+              sound.playClick();
+              onSelectCell((selectedCellIndex + 39) % 40);
+            }}
+            className="p-1.5 rounded-lg bg-[var(--surface-subtle)] border border-[var(--border-strong)] cursor-pointer shrink-0"
+            title="Попередня клітинка"
+          >
+            <ChevronLeft className="w-3.5 h-3.5" />
+          </button>
+        )}
+
+        <div
+          onClick={onOpenFullInspector}
+          className="flex items-center gap-2 min-w-0 flex-1 cursor-pointer"
+        >
+          <div className="relative w-9 h-9 rounded-lg overflow-hidden border border-[var(--border-strong)] shrink-0 bg-slate-950">
+            <img
+              src={art.imageSrc}
+              alt={cell.name}
+              style={{ objectPosition: art.objectPosition }}
+              className={`w-full h-full object-cover ${getImageExposureClass(art.imageSrc)}`}
             />
-          )}
+            {cell.color && (
+              <span
+                style={{ backgroundColor: cell.color }}
+                className="absolute bottom-0 inset-x-0 h-1.5"
+              />
+            )}
+          </div>
+          <div className="min-w-0 flex-1 leading-tight">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="font-display font-extrabold text-[11.5px] truncate">
+                {cell.name}
+              </span>
+              {prop && prop.branches > 0 && (
+                <span className="px-1.5 py-0.2 rounded bg-amber-400 text-slate-950 text-[8.5px] font-black shrink-0">
+                  {prop.branches >= 5 ? '👑 Холдинг' : `★${prop.branches}`}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5 text-[10px] font-bold text-[var(--text-secondary)] tabular-nums mt-0.5 truncate">
+              {cell.price ? (
+                <span className="whitespace-nowrap">
+                  {formatMoney(cell.price)}
+                </span>
+              ) : (
+                <span className="truncate">{cell.subtitle || 'Подія поля'}</span>
+              )}
+              {isPurchasableCell(cell) && (
+                <>
+                  <span>•</span>
+                  {owner ? (
+                    <span
+                      style={{ color: owner.color }}
+                      className="font-extrabold truncate"
+                    >
+                      ● {owner.id === myPlayerId ? 'ВИ' : owner.name}
+                      {prop?.isMortgaged
+                        ? ' (Застава)'
+                        : currentRent > 0
+                          ? ` • Ор. ${formatMoney(currentRent)}`
+                          : ''}
+                    </span>
+                  ) : (
+                    <span className="text-emerald-600 dark:text-emerald-400 font-extrabold whitespace-nowrap">
+                      Вільно
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
         </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5">
-            <span className="font-display font-extrabold text-xs truncate">
-              {cell.name}
-            </span>
-            {prop && prop.branches > 0 && (
-              <span className="px-1.5 py-0.2 rounded bg-amber-400 text-slate-950 text-[9px] font-black shrink-0">
-                {prop.branches >= 5 ? '👑 Холдинг' : `★${prop.branches}`}
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-2 text-[10.5px] font-bold text-[var(--text-secondary)] tabular-nums mt-0.5 truncate">
-            {cell.price ? (
-              <span className="whitespace-nowrap">
-                {formatMoney(cell.price)}
-              </span>
-            ) : (
-              <span className="truncate">{cell.subtitle || 'Подія поля'}</span>
-            )}
-            {isPurchasableCell(cell) && (
-              <>
-                <span>•</span>
-                {owner ? (
-                  <span
-                    style={{ color: owner.color }}
-                    className="font-extrabold truncate"
-                  >
-                    ● {owner.name}
-                    {prop?.isMortgaged ? ' (Застава)' : ''}
-                  </span>
-                ) : (
-                  <span className="text-emerald-600 dark:text-emerald-400 font-extrabold whitespace-nowrap">
-                    Вільно
-                  </span>
-                )}
-              </>
-            )}
-          </div>
+
+        <div className="flex items-center gap-1 shrink-0">
+          {onSelectCell && (
+            <button
+              type="button"
+              onClick={() => {
+                sound.playClick();
+                onSelectCell((selectedCellIndex + 1) % 40);
+              }}
+              className="p-1.5 rounded-lg bg-[var(--surface-subtle)] border border-[var(--border-strong)] cursor-pointer shrink-0"
+              title="Наступна клітинка"
+            >
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onOpenFullInspector}
+            className="px-2.5 py-1.5 rounded-lg bg-[var(--surface-subtle)] border border-[var(--border-strong)] text-[10.5px] font-extrabold hover:border-blue-500 transition cursor-pointer whitespace-nowrap"
+          >
+            Деталі →
+          </button>
         </div>
       </div>
 
-      <div className="flex items-center gap-1.5 shrink-0">
-        {canManageNow && buildCheck.ok && (
-          <button
-            onClick={() => onBuildBranch(cell.index)}
-            className="px-2.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-[10.5px] font-extrabold flex items-center gap-1 cursor-pointer whitespace-nowrap shadow"
-          >
-            <Building2 className="w-3.5 h-3.5" />+ Філія
-          </button>
-        )}
-        <button
-          onClick={onOpenFullInspector}
-          className="px-3 py-2 rounded-xl bg-[var(--surface-subtle)] border border-[var(--border-strong)] text-[11px] font-extrabold hover:border-blue-500 transition cursor-pointer whitespace-nowrap"
-        >
-          Деталі →
-        </button>
-      </div>
+      {/* Instant Property Management OR Compact Live Rent Strip right below the board! */}
+      {isOwnedByMe && canManageNow ? (
+        <div className="flex items-center gap-1.5 pt-0.5 border-t border-[var(--border-glass)]">
+          {cell.type === 'company' && (
+            <>
+              <button
+                type="button"
+                disabled={!buildCheck.ok}
+                onClick={() => onBuildBranch(cell.index)}
+                className="flex-1 py-1.5 px-2 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-35 text-white text-[10px] font-extrabold flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap"
+              >
+                <Building2 className="w-3 h-3 shrink-0" />
+                <span>+ Філія ({formatCompactSlotPrice(cell.branchCost)} ₴)</span>
+              </button>
+              {prop && prop.branches > 0 && onSellBranch && (
+                <button
+                  type="button"
+                  disabled={!sellCheck.ok}
+                  onClick={() => onSellBranch(cell.index)}
+                  className="py-1.5 px-2 rounded-lg bg-amber-400 hover:bg-amber-300 disabled:opacity-35 text-slate-950 text-[10px] font-extrabold cursor-pointer whitespace-nowrap"
+                >
+                  - Філія
+                </button>
+              )}
+            </>
+          )}
+          {!prop?.isMortgaged
+            ? onMortgage && (
+                <button
+                  type="button"
+                  disabled={!mortgageCheck.ok}
+                  onClick={() => onMortgage(cell.index)}
+                  className="flex-1 py-1.5 px-2 rounded-lg bg-[var(--surface-subtle)] border border-[var(--border-strong)] disabled:opacity-35 text-[10px] font-extrabold flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap"
+                >
+                  <Lock className="w-3 h-3 shrink-0" />
+                  <span>Застава (+{formatCompactSlotPrice(getMortgageValue(cell.index))} ₴)</span>
+                </button>
+              )
+            : onUnmortgage && (
+                <button
+                  type="button"
+                  disabled={(me?.money ?? 0) < getUnmortgageCost(cell.index)}
+                  onClick={() => onUnmortgage(cell.index)}
+                  className="flex-1 py-1.5 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-35 text-white text-[10px] font-extrabold flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap"
+                >
+                  <Unlock className="w-3 h-3 shrink-0" />
+                  <span>Викуп (-{formatCompactSlotPrice(getUnmortgageCost(cell.index))} ₴)</span>
+                </button>
+              )}
+        </div>
+      ) : (
+        cell.type === 'company' &&
+        cell.rent && (
+          <div className="grid grid-cols-5 gap-1 pt-0.5 border-t border-[var(--border-glass)] text-[9px] tabular-nums">
+            {[
+              { lbl: 'Баз', val: cell.rent[0], lvl: 0 },
+              { lbl: '★1', val: cell.rent[1], lvl: 1 },
+              { lbl: '★2', val: cell.rent[2], lvl: 2 },
+              { lbl: '★3', val: cell.rent[3], lvl: 3 },
+              { lbl: '👑', val: cell.rent[5], lvl: 5 },
+            ].map((tier) => {
+              const isActive =
+                Boolean(owner) && (prop?.branches ?? 0) === tier.lvl;
+              return (
+                <div
+                  key={tier.lvl}
+                  className={`px-1 py-0.5 rounded flex items-center justify-between gap-0.5 ${
+                    isActive
+                      ? 'bg-blue-600 text-white font-black'
+                      : 'bg-[var(--surface-subtle)] text-[var(--text-secondary)] font-bold'
+                  }`}
+                >
+                  <span>{tier.lbl}</span>
+                  <span className="font-extrabold text-[var(--text-primary)]">
+                    {formatCompactSlotPrice(tier.val)}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )
+      )}
     </div>
   );
 };
@@ -2709,7 +2918,7 @@ export const MobileBottomNav: React.FC<{
   ];
 
   return (
-    <nav className="glass-panel rounded-2xl p-1 grid grid-cols-4 gap-1 shrink-0">
+    <nav className="glass-panel rounded-xl sm:rounded-2xl p-1 grid grid-cols-4 gap-1 shrink-0">
       {items.map((item) => {
         const active = activeTab === item.id;
         return (
@@ -2719,13 +2928,13 @@ export const MobileBottomNav: React.FC<{
               sound.playClick();
               onSelectTab(item.id);
             }}
-            className={`relative py-2 px-1 rounded-xl text-[10.5px] sm:text-xs font-extrabold flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 transition cursor-pointer ${
+            className={`relative py-1.5 px-1 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-extrabold flex flex-row items-center justify-center gap-1 transition cursor-pointer ${
               active
                 ? 'bg-blue-600 text-white shadow-md'
                 : 'text-[var(--text-secondary)] hover:bg-slate-500/10'
             }`}
           >
-            <div className="flex items-center">
+            <div className="flex items-center shrink-0">
               {item.icon}
               {item.id === 'chat' || item.id === 'inspector' ? item.badge : null}
             </div>
@@ -2896,14 +3105,14 @@ export const MobileLandscapeCockpit: React.FC<MobileLandscapeCockpitProps> = ({
   };
 
   const utilityControlsBar = (
-    <div className="glass-panel rounded-xl px-2 py-1.5 flex items-center justify-between gap-1 shrink-0 overflow-hidden">
+    <div className="glass-panel rounded-xl px-1.5 py-1 flex items-center justify-between gap-1 shrink-0 overflow-hidden">
       <button
         type="button"
         onClick={copyRoomLink}
         title="Скопіювати посилання на стіл"
-        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg bg-blue-600/15 text-blue-700 dark:text-sky-300 text-[9.5px] font-black cursor-pointer whitespace-nowrap min-w-0 truncate"
+        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg bg-blue-600/15 text-blue-700 dark:text-sky-300 text-[9.5px] font-black cursor-pointer whitespace-nowrap shrink-0"
       >
-        <span className="truncate">{gameState.roomCode}</span>
+        <span>{gameState.roomCode}</span>
         {copied ? (
           <Check className="w-2.5 h-2.5 text-emerald-500 shrink-0" />
         ) : (
@@ -2918,7 +3127,7 @@ export const MobileLandscapeCockpit: React.FC<MobileLandscapeCockpitProps> = ({
               type="button"
               onClick={onFlipRotationDir}
               title="Перевернути екран на 180° (під іншу руку)"
-              className="p-1 rounded-lg bg-blue-500/12 hover:bg-blue-500/25 text-blue-600 dark:text-sky-300 transition cursor-pointer"
+              className="p-0.5 rounded-lg bg-blue-500/12 hover:bg-blue-500/25 text-blue-600 dark:text-sky-300 transition cursor-pointer"
             >
               <RefreshCw className="w-3.5 h-3.5" />
             </button>
@@ -2926,10 +3135,11 @@ export const MobileLandscapeCockpit: React.FC<MobileLandscapeCockpitProps> = ({
               <button
                 type="button"
                 onClick={onSwitchToPortrait}
-                title="Перемкнути у вертикальний режим"
-                className="p-1 rounded-lg hover:bg-slate-500/15 transition cursor-pointer"
+                title="Повернути у зручний вертикальний режим"
+                className="px-1.5 py-0.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[9.5px] font-extrabold inline-flex items-center gap-0.5 transition cursor-pointer"
               >
-                <Smartphone className="w-3.5 h-3.5" />
+                <Smartphone className="w-3 h-3 shrink-0" />
+                <span>Вертик.</span>
               </button>
             )}
           </>
@@ -2948,7 +3158,7 @@ export const MobileLandscapeCockpit: React.FC<MobileLandscapeCockpitProps> = ({
           type="button"
           onClick={onOpenRules}
           title="Правила гри"
-          className="p-1 rounded-lg hover:bg-slate-500/15 transition cursor-pointer"
+          className="p-0.5 rounded-lg hover:bg-slate-500/15 transition cursor-pointer"
         >
           <BookOpen className="w-3.5 h-3.5" />
         </button>
@@ -2957,7 +3167,7 @@ export const MobileLandscapeCockpit: React.FC<MobileLandscapeCockpitProps> = ({
           type="button"
           onClick={onToggleSound}
           title={soundEnabled ? 'Вимкнути звук' : 'Увімкнути звук'}
-          className="p-1 rounded-lg hover:bg-slate-500/15 transition cursor-pointer"
+          className="p-0.5 rounded-lg hover:bg-slate-500/15 transition cursor-pointer"
         >
           {soundEnabled ? (
             <Volume2 className="w-3.5 h-3.5" />
@@ -2970,7 +3180,7 @@ export const MobileLandscapeCockpit: React.FC<MobileLandscapeCockpitProps> = ({
           type="button"
           onClick={onToggleDarkMode}
           title="Перемкнути тему"
-          className="p-1 rounded-lg hover:bg-slate-500/15 transition cursor-pointer"
+          className="p-0.5 rounded-lg hover:bg-slate-500/15 transition cursor-pointer"
         >
           {darkMode ? (
             <Sun className="w-3.5 h-3.5 text-amber-400" />
@@ -2983,7 +3193,7 @@ export const MobileLandscapeCockpit: React.FC<MobileLandscapeCockpitProps> = ({
           type="button"
           onClick={onLeaveGame}
           title="Вийти в головне меню"
-          className="p-1 rounded-lg hover:bg-rose-500/15 text-rose-500 transition cursor-pointer"
+          className="p-0.5 rounded-lg hover:bg-rose-500/15 text-rose-500 transition cursor-pointer"
         >
           <LogOut className="w-3.5 h-3.5" />
         </button>

@@ -163,7 +163,7 @@ export function useMobileViewportAndOrientation(isInBoardMatch: boolean) {
     readViewportMetrics()
   );
   const [mobileLandscapeEnabled, setMobileLandscapeEnabled] =
-    useState<boolean>(true);
+    useState<boolean>(false);
   const [rotationDir, setRotationDir] = useState<LandscapeRotationDir>(() => {
     if (typeof window === 'undefined') return 'cw';
     return window.localStorage.getItem('magnat_landscape_dir') === 'ccw'
@@ -207,14 +207,10 @@ export function useMobileViewportAndOrientation(isInBoardMatch: boolean) {
     };
   }, []);
 
-  // Automatically enable horizontal mode every time the player enters an active match
+  // Reset forced CSS landscape when leaving a match; keep natural portrait by default when entering
   useEffect(() => {
-    if (isInBoardMatch && !prevInMatchRef.current) {
-      setMobileLandscapeEnabled(true);
-      if (isLikelyMobilePhoneViewport(window.innerWidth, window.innerHeight)) {
-        setShowRotateHint(true);
-      }
-    } else if (!isInBoardMatch && prevInMatchRef.current) {
+    if (!isInBoardMatch && prevInMatchRef.current) {
+      setMobileLandscapeEnabled(false);
       setShowRotateHint(false);
       releaseNativeMobileLandscape();
     }

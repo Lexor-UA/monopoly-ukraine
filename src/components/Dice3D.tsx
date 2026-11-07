@@ -678,7 +678,7 @@ function drawFallback2D(
 }
 
 const CANVAS_SIZES: Record<'sm' | 'md' | 'lg' | 'xl', { w: number; h: number }> = {
-  sm: { w: 128, h: 64 },
+  sm: { w: 112, h: 54 },
   md: { w: 174, h: 86 },
   lg: { w: 214, h: 106 },
   xl: { w: 246, h: 122 },
