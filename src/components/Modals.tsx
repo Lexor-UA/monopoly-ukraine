@@ -2,7 +2,10 @@ import confetti from 'canvas-confetti';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Award,
+  Building2,
   Check,
+  Crown,
+  Eye,
   FileSignature,
   Gavel,
   Handshake,
@@ -10,6 +13,7 @@ import {
   Shield,
   ShieldCheck,
   Sparkles,
+  TrendingUp,
   Trophy,
   Users,
   X,
@@ -17,18 +21,22 @@ import {
 import React, { useEffect, useState } from 'react';
 import {
   BOARD_CELLS,
+  SECTOR_COLORS,
   TEAM_META,
   areTeammates,
   calculatePlayerNetWorth,
   formatMoney,
   getSectorCells,
+  hasFullSectorMonopoly,
 } from '../shared/boardData';
-import { GameState, ToastTransfer } from '../shared/types';
+import { GameState, SectorId, ToastTransfer } from '../shared/types';
+import { sound } from '../utils/sound';
 import {
   BrandEmblem,
   MagnatBrandIcon,
   MagnatWordmark,
   TokenAvatar,
+  withCardArtVersion,
 } from './UkrainianArtwork';
 
 // === 1. FINTECH PUSH TOAST ===
@@ -603,23 +611,69 @@ export const IncomingTradeModal: React.FC<{
 };
 
 // === 4. VICTORY CELEBRATION MODAL ===
+const VICTORY_SECTOR_LABELS: Record<SectorId, string> = {
+  fintech: 'Банки та Фінанси',
+  tech: 'ІТ та Технології',
+  telecom: 'Зв’язок та Інтернет',
+  ecommerce: 'Торгівля та Гіпермаркети',
+  fuel: 'Пальне та Заправки',
+  delivery: 'Пошта та Доставка',
+  retail: 'Магазини та Супермаркети',
+  coffee: 'Кав’ярні та Пекарні',
+  transport: 'Транспортна Мережа',
+  utility: 'Інфраструктура',
+};
+
+const VICTORY_COMPANY_SECTORS: SectorId[] = [
+  'fintech',
+  'tech',
+  'telecom',
+  'ecommerce',
+  'fuel',
+  'delivery',
+  'retail',
+  'coffee',
+];
+
 export const VictoryModal: React.FC<{
   gameState: GameState;
   myPlayerId: string;
   onRematchLobby: () => void;
   onExitHome: () => void;
 }> = ({ gameState, myPlayerId, onRematchLobby, onExitHome }) => {
+  const [minimized, setMinimized] = useState(false);
   const isFinished =
     gameState.status === 'finished' || gameState.phase === 'GAME_OVER';
 
   useEffect(() => {
-    if (!isFinished) return;
+    if (!isFinished) {
+      setMinimized(false);
+      return;
+    }
+    sound.playVictory();
     confetti({
-      particleCount: 120,
+      particleCount: 110,
       spread: 85,
-      origin: { y: 0.6 },
+      origin: { y: 0.55 },
       colors: ['#0057B8', '#FFD700', '#38BDF8', '#10B981'],
     });
+    const t1 = setTimeout(() => {
+      confetti({
+        particleCount: 65,
+        angle: 60,
+        spread: 60,
+        origin: { x: 0.12, y: 0.65 },
+        colors: ['#FFD700', '#F59E0B', '#38BDF8'],
+      });
+      confetti({
+        particleCount: 65,
+        angle: 120,
+        spread: 60,
+        origin: { x: 0.88, y: 0.65 },
+        colors: ['#0057B8', '#FFD700', '#34D399'],
+      });
+    }, 650);
+    return () => clearTimeout(t1);
   }, [isFinished]);
 
   if (!isFinished) return null;
@@ -684,147 +738,408 @@ export const VictoryModal: React.FC<{
     ? calculatePlayerNetWorth(winner.id, winner.money, gameState.properties)
     : 0;
 
-  return (
-    <div className="@container fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-2 sm:p-4">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9, y: 16 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="w-full max-w-md mono-graphite-card rounded-[24px] sm:rounded-[32px] p-4 @[520px]:p-5 sm:p-7 text-center space-y-3 sm:space-y-5 shadow-2xl border border-amber-400/35 max-h-full overflow-y-auto"
-      >
-        <div className="mx-auto w-16 h-16 sm:w-20 sm:h-20 rounded-3xl overflow-hidden border-2 border-amber-400 shadow-xl relative">
-          <img
-            src="/images/hero-lion-magnate.jpg"
-            alt="Перемога"
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-slate-950/35 flex items-center justify-center">
-            <Trophy className="w-9 h-9 text-amber-300 drop-shadow" />
-          </div>
-        </div>
+  const isMeWinner = isTeamVictory
+    ? didMyTeamWin
+    : Boolean(winner && winner.id === myPlayerId);
 
-        <div>
-          <span className="px-3 py-1 rounded-full bg-amber-400/15 text-amber-300 text-xs font-extrabold">
-            {isTeamVictory
-              ? didMyTeamWin
-                ? '🏆 Ваш Альянс переміг • Слава Україні! 🇺🇦'
-                : 'Командний матч 2×2 завершено • Слава Україні! 🇺🇦'
-              : 'Матч завершено • Слава Україні! 🇺🇦'}
-          </span>
-          <h2 className="font-display font-extrabold text-2xl text-white mt-3">
+  // Compute Empire Statistics for the Winner (or Winning Alliance)
+  const winnerOwnerIds = new Set<string>(
+    isTeamVictory && winningTeamId
+      ? winningTeamMembers.map((m) => m.id)
+      : winner
+        ? [winner.id]
+        : []
+  );
+
+  let winnerOwnedCount = 0;
+  let winnerBranches = 0;
+  let winnerHoldings = 0;
+  Object.values(gameState.properties).forEach((prop) => {
+    if (prop.ownerId && winnerOwnerIds.has(prop.ownerId)) {
+      winnerOwnedCount += 1;
+      if (prop.branches >= 5) {
+        winnerHoldings += 1;
+      } else if (prop.branches > 0) {
+        winnerBranches += prop.branches;
+      }
+    }
+  });
+
+  const winnerMonopolies: SectorId[] = VICTORY_COMPANY_SECTORS.filter((sec) =>
+    Array.from(winnerOwnerIds).some((oid) =>
+      hasFullSectorMonopoly(oid, sec, gameState.properties, false)
+    )
+  );
+
+  const totalNetWorthDisplay = isTeamVictory
+    ? teamCombinedWorth
+    : winnerNetWorth;
+  const winnerCashDisplay = isTeamVictory
+    ? gameState.players
+        .filter((p) => p.teamId === winningTeamId && !p.isBankrupt)
+        .reduce((sum, p) => sum + p.money, 0)
+    : (winner?.money ?? 0);
+  const winnerAssetsValue = Math.max(
+    0,
+    totalNetWorthDisplay - winnerCashDisplay
+  );
+  const marketSharePct = Math.round((winnerOwnedCount / 28) * 100);
+
+  const honoraryTitle =
+    winnerHoldings >= 2
+      ? '👑 Імператор Українських Холдингів'
+      : winnerMonopolies.length >= 3
+        ? '🏛️ Абсолютний Монополіст Держави'
+        : totalNetWorthDisplay >= 38000
+          ? '💎 Фінансовий Титан України'
+          : gameState.zsuTotalDonated >= 8000
+            ? '🛡️ Меценат Незламної Економіки'
+            : '⚡ Стратегічний Магнат КАБЗДА.UA';
+
+  // Build sorted final match standings (1st..4th place)
+  const allStandings = [
+    ...gameState.players.map((p) => {
+      const worth = p.isBankrupt
+        ? 0
+        : calculatePlayerNetWorth(p.id, p.money, gameState.properties);
+      const isChamp = isTeamVictory
+        ? p.teamId === winningTeamId
+        : p.id === winner?.id;
+      return {
+        id: p.id,
+        name: p.name,
+        token: p.token,
+        color: p.color,
+        isBankrupt: p.isBankrupt,
+        isChamp,
+        netWorth: worth,
+      };
+    }),
+    ...(gameState.eliminatedPlayers ?? [])
+      .filter((ep) => !gameState.players.some((p) => p.id === ep.id))
+      .map((ep) => ({
+        id: ep.id,
+        name: ep.name,
+        token: ep.token,
+        color: ep.color,
+        isBankrupt: true,
+        isChamp: Boolean(isTeamVictory && ep.teamId === winningTeamId),
+        netWorth: 0,
+      })),
+  ].sort((a, b) => {
+    if (a.isChamp !== b.isChamp) return a.isChamp ? -1 : 1;
+    if (a.isBankrupt !== b.isBankrupt) return a.isBankrupt ? 1 : -1;
+    return b.netWorth - a.netWorth;
+  });
+
+  if (minimized) {
+    return (
+      <div className="fixed bottom-16 sm:bottom-4 left-1/2 -translate-x-1/2 z-50 w-max max-w-[calc(100%-16px)]">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="px-3.5 py-2 rounded-2xl bg-slate-950/95 border-2 border-amber-400/75 shadow-[0_16px_40px_rgba(0,0,0,0.85)] backdrop-blur-xl flex items-center gap-2.5 text-white"
+        >
+          <Trophy className="w-4 h-4 text-amber-300 shrink-0" />
+          <span className="text-xs font-extrabold truncate max-w-[170px] sm:max-w-[260px]">
             {isTeamVictory && winTeamMeta
-              ? `${winTeamMeta.name} — Переможці!`
-              : winner
-                ? `${winner.name} — Головний Магнат!`
-                : 'Гра завершена!'}
-          </h2>
-        </div>
+              ? `${winTeamMeta.name} (${formatMoney(teamCombinedWorth)})`
+              : `${winner?.name ?? 'Переможець'} (${formatMoney(winnerNetWorth)})`}
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              sound.playClick();
+              setMinimized(false);
+            }}
+            className="px-3 py-1 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-display font-extrabold text-[11px] cursor-pointer shrink-0 transition"
+          >
+            Підсумки 🏆
+          </button>
+        </motion.div>
+      </div>
+    );
+  }
 
-        {isTeamVictory && winningTeamMembers.length > 0 ? (
-          <div className="space-y-2.5">
-            {winningTeamMembers.map((member) => (
-              <div
-                key={member.id}
-                className="p-3.5 rounded-2xl bg-white/8 border border-white/15 flex items-center justify-between"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <TokenAvatar
-                    token={member.token}
-                    color={member.color}
-                    size={42}
-                  />
-                  <div className="text-left min-w-0">
-                    <div className="font-extrabold text-sm text-white truncate flex items-center gap-1.5">
-                      <span className="truncate">{member.name}</span>
-                      {member.id === myPlayerId && (
-                        <span className="px-1.5 py-0.5 rounded bg-emerald-500 text-slate-950 text-[9px] font-black shrink-0">
-                          ВИ
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-[11px] text-slate-300">
-                      {member.isAlive
-                        ? `Лідер • ${winTeamMeta?.shortName}`
-                        : `Учасник • ${winTeamMeta?.shortName}`}
-                    </div>
-                  </div>
-                </div>
-                <div className="text-right shrink-0">
-                  <div className="text-[10px] text-slate-400 uppercase font-bold">
-                    Капітал
-                  </div>
-                  <div className="font-display font-extrabold text-amber-400 text-sm tabular-nums">
-                    {formatMoney(member.netWorth)}
-                  </div>
-                </div>
-              </div>
-            ))}
-            <div
-              style={{
-                borderColor:
-                  winningTeamId === 'A'
-                    ? 'rgba(56, 189, 248, 0.38)'
-                    : 'rgba(251, 191, 36, 0.38)',
-                backgroundColor:
-                  winningTeamId === 'A'
-                    ? 'rgba(56, 189, 248, 0.12)'
-                    : 'rgba(251, 191, 36, 0.12)',
-              }}
-              className="px-4 py-2.5 rounded-xl border flex items-center justify-between text-xs"
-            >
-              <span className="font-extrabold text-slate-200">
-                🤝 Сумарний капітал альянсу:
+  return (
+    <div className="@container fixed inset-0 z-50 bg-slate-950/82 backdrop-blur-md flex items-center justify-center p-2 sm:p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.92, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        className="w-full max-w-[460px] mono-graphite-card rounded-[24px] sm:rounded-[30px] overflow-hidden text-center shadow-[0_28px_80px_-12px_rgba(0,0,0,0.92)] border-2 border-amber-400/50 max-h-[calc(100dvh-16px)] flex flex-col"
+      >
+        {/* === 1. CINEMATIC CHAMPIONSHIP HERO BANNER WITH WINNER PEDESTAL === */}
+        <div className="relative h-[98px] sm:h-[122px] w-full shrink-0 overflow-hidden bg-slate-950">
+          <img
+            src={withCardArtVersion('/images/card-fintech-towers.jpg')}
+            alt="Імперія Переможця КАБЗДА.UA"
+            className="absolute inset-0 w-full h-full object-cover object-center brightness-[0.88] scale-[1.03]"
+          />
+          <div
+            style={{
+              background:
+                'radial-gradient(circle at 50% 25%, rgba(251, 191, 36, 0.35), transparent 62%), linear-gradient(180deg, rgba(2, 6, 23, 0.42) 0%, rgba(11, 17, 32, 0.96) 100%)',
+            }}
+            className="pointer-events-none absolute inset-0"
+          />
+
+          {/* Top Bar Over Hero: Brand Identity + "Inspect Final Board" Toggle */}
+          <div className="relative z-10 px-3.5 pt-2 flex items-center justify-between gap-2">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-xl bg-slate-950/75 border border-white/15">
+              <MagnatBrandIcon size="xs" />
+              <span className="font-display font-black text-[10px] tracking-wider text-amber-300">
+                КАБЗДА.UA
               </span>
-              <span className="font-display font-extrabold text-amber-300 tabular-nums">
-                {formatMoney(teamCombinedWorth)}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                sound.playClick();
+                setMinimized(true);
+              }}
+              className="px-2.5 py-1 rounded-xl bg-slate-950/78 hover:bg-slate-900 border border-white/20 text-[10.5px] font-extrabold text-slate-200 inline-flex items-center gap-1 cursor-pointer transition"
+            >
+              <Eye className="w-3.5 h-3.5 text-sky-300" />
+              <span>Поле</span>
+            </button>
+          </div>
+
+          {/* Winner Token Avatar on Golden Championship Pedestal */}
+          <div className="relative z-10 -mt-1 flex flex-col items-center">
+            <div className="relative inline-flex items-center justify-center">
+              <div className="pointer-events-none absolute -inset-2 rounded-full bg-amber-400/30 blur-md animate-pulse" />
+              <div className="p-1 rounded-full bg-gradient-to-b from-amber-300 via-amber-500 to-yellow-600 shadow-[0_0_32px_rgba(251,191,36,0.65)]">
+                {winner ? (
+                  <TokenAvatar
+                    token={winner.token}
+                    color={winner.color}
+                    size={52}
+                  />
+                ) : (
+                  <div className="w-[52px] h-[52px] rounded-full bg-slate-900 flex items-center justify-center">
+                    <Trophy className="w-6 h-6 text-amber-300" />
+                  </div>
+                )}
+              </div>
+              <span className="absolute -top-1 -right-1 w-5.5 h-5.5 rounded-full bg-gradient-to-br from-amber-300 to-amber-500 text-slate-950 border-2 border-slate-950 shadow-lg flex items-center justify-center">
+                <Trophy className="w-3 h-3 stroke-[2.5]" />
               </span>
             </div>
           </div>
-        ) : (
-          winner && (
-            <div className="p-4 rounded-2xl bg-white/8 border border-white/15 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <TokenAvatar
-                  token={winner.token}
-                  color={winner.color}
-                  size={46}
-                />
-                <div className="text-left">
-                  <div className="font-extrabold text-sm text-white">
-                    {winner.name}
-                  </div>
-                  <div className="text-xs text-slate-300">
-                    Переможець КАБЗДА.UA
-                  </div>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="text-[10px] text-slate-400 uppercase font-bold">
-                  Капітал
-                </div>
-                <div className="font-display font-extrabold text-amber-400 text-sm tabular-nums">
-                  {formatMoney(winnerNetWorth)}
-                </div>
-              </div>
-            </div>
-          )
-        )}
-
-        <div className="p-3.5 rounded-2xl bg-emerald-500/12 border border-emerald-400/25 flex items-center justify-between text-xs">
-          <span className="text-emerald-200 font-bold flex items-center gap-1.5">
-            <Shield className="w-4 h-4 text-amber-300" />
-            Разом передано на Оборону за гру:
-          </span>
-          <span className="font-display font-extrabold text-amber-300 tabular-nums">
-            {formatMoney(gameState.zsuTotalDonated)}
-          </span>
         </div>
 
-        <div className="flex gap-2.5 pt-2">
+        {/* === 2. SCROLLABLE CHAMPIONSHIP REPORT BODY === */}
+        <div className="px-3.5 sm:px-5 py-2 sm:py-3 space-y-2 sm:space-y-2.5 overflow-y-auto no-scrollbar flex-1 min-h-0">
+          {/* Headline & Honorary Magnate Title */}
+          <div>
+            <span
+              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${
+                isMeWinner
+                  ? 'bg-amber-400/18 border-amber-300/45 text-amber-200'
+                  : 'bg-sky-500/15 border-sky-400/35 text-sky-200'
+              }`}
+            >
+              {isTeamVictory
+                ? didMyTeamWin
+                  ? '🏆 Ваш Альянс переміг • Слава Україні! 🇺🇦'
+                  : 'Командний матч 2×2 завершено • Слава Україні! 🇺🇦'
+                : isMeWinner
+                  ? '🏆 Вітаємо з перемогою • Слава Україні! 🇺🇦'
+                  : 'Матч завершено • Слава Україні! 🇺🇦'}
+            </span>
+
+            <h2 className="font-display font-extrabold text-lg sm:text-2xl text-white mt-1 leading-tight">
+              {isTeamVictory && winTeamMeta
+                ? `${winTeamMeta.name} — Переможці!`
+                : winner
+                  ? `${winner.name} — Головний Магнат!`
+                  : 'Гра завершена!'}
+            </h2>
+
+            <div className="text-[10.5px] font-bold text-amber-300/95 mt-0.5">
+              {honoraryTitle}
+            </div>
+          </div>
+
+          {/* 4-Card Empire Metrics Grid (2×2) */}
+          <div className="grid grid-cols-2 gap-1.5 sm:gap-2 text-left">
+            {/* 1. Total Net Worth */}
+            <div className="p-2 rounded-2xl bg-gradient-to-br from-amber-500/16 via-amber-500/8 to-transparent border border-amber-400/35">
+              <div className="flex items-center justify-between text-[9.5px] font-extrabold uppercase tracking-wider text-amber-200/90">
+                <span>Капітал імперії</span>
+                <TrendingUp className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+              </div>
+              <div className="font-display font-extrabold text-sm sm:text-lg text-amber-300 tabular-nums mt-0.5 leading-tight">
+                {formatMoney(totalNetWorthDisplay)}
+              </div>
+              <div className="text-[9px] font-semibold text-slate-300 mt-0.5 leading-tight">
+                💵 {formatMoney(winnerCashDisplay)} • 🏢{' '}
+                {formatMoney(winnerAssetsValue)}
+              </div>
+            </div>
+
+            {/* 2. Market Control (Companies Owned) */}
+            <div className="p-2 rounded-2xl bg-white/[0.06] border border-white/15">
+              <div className="flex items-center justify-between text-[9.5px] font-extrabold uppercase tracking-wider text-sky-200/90">
+                <span>Контроль ринку</span>
+                <Building2 className="w-3.5 h-3.5 text-sky-300 shrink-0" />
+              </div>
+              <div className="font-display font-extrabold text-sm sm:text-lg text-white tabular-nums mt-0.5 leading-tight">
+                {winnerOwnedCount} з 28{' '}
+                <span className="text-[11px] font-bold text-sky-300">
+                  ({marketSharePct}%)
+                </span>
+              </div>
+              <div className="text-[9px] font-semibold text-slate-300 mt-0.5 leading-tight">
+                Компаній України у портфелі
+              </div>
+            </div>
+
+            {/* 3. Monopolies, Holdings & Branches */}
+            <div className="p-2 rounded-2xl bg-white/[0.06] border border-white/15">
+              <div className="flex items-center justify-between text-[9.5px] font-extrabold uppercase tracking-wider text-purple-200/90">
+                <span>Монополії та мережа</span>
+                <Crown className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+              </div>
+              <div className="font-display font-extrabold text-sm sm:text-lg text-white tabular-nums mt-0.5 leading-tight">
+                {winnerMonopolies.length}{' '}
+                <span className="text-[11px] font-bold text-slate-300">
+                  {winnerMonopolies.length === 1
+                    ? 'монополія'
+                    : winnerMonopolies.length >= 2 &&
+                        winnerMonopolies.length <= 4
+                      ? 'монополії'
+                      : 'монополій'}
+                </span>
+              </div>
+              <div className="text-[9px] font-semibold text-slate-300 mt-0.5 leading-tight">
+                {winnerHoldings}{' '}
+                {winnerHoldings === 1
+                  ? 'холдинг'
+                  : winnerHoldings >= 2 && winnerHoldings <= 4
+                    ? 'холдинги'
+                    : 'холдингів'}{' '}
+                👑 • {winnerBranches}{' '}
+                {winnerBranches === 1
+                  ? 'філія'
+                  : winnerBranches >= 2 && winnerBranches <= 4
+                    ? 'філії'
+                    : 'філій'}{' '}
+                ★
+              </div>
+            </div>
+
+            {/* 4. Defense Fund Contribution */}
+            <div className="p-2 rounded-2xl bg-emerald-500/12 border border-emerald-400/30">
+              <div className="flex items-center justify-between text-[9.5px] font-extrabold uppercase tracking-wider text-emerald-200/90">
+                <span>Фонд Оборони</span>
+                <Shield className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+              </div>
+              <div className="font-display font-extrabold text-sm sm:text-lg text-amber-300 tabular-nums mt-0.5 leading-tight">
+                {formatMoney(gameState.zsuTotalDonated)}
+              </div>
+              <div className="text-[9px] font-semibold text-emerald-200/90 mt-0.5 leading-tight">
+                Разом передано за матч 🇺🇦
+              </div>
+            </div>
+          </div>
+
+          {/* Collected Sector Monopolies Showcase */}
+          {winnerMonopolies.length > 0 && (
+            <div className="p-2 rounded-2xl bg-white/[0.05] border border-white/12 text-left">
+              <div className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400 mb-1">
+                Зібрані галузеві монополії переможця:
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {winnerMonopolies.map((sec) => (
+                  <span
+                    key={sec}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-950/75 border border-white/15 text-[9.5px] font-extrabold text-white"
+                  >
+                    <span
+                      style={{ backgroundColor: SECTOR_COLORS[sec] }}
+                      className="w-2 h-2 rounded-full shrink-0"
+                    />
+                    <span>{VICTORY_SECTOR_LABELS[sec]}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Final Match Standings Leaderboard (1st..4th Place) */}
+          <div className="rounded-2xl bg-white/[0.05] border border-white/12 overflow-hidden text-left">
+            <div className="px-3 py-1 border-b border-white/10 flex items-center justify-between text-[9px] font-extrabold uppercase tracking-wider text-slate-400">
+              <span>Підсумковий рейтинг матчу</span>
+              <span>Статус / Капітал</span>
+            </div>
+            <div className="divide-y divide-white/8">
+              {allStandings.map((pl, idx) => (
+                <div
+                  key={pl.id}
+                  className={`px-2.5 py-1.5 flex items-center justify-between gap-2 ${
+                    pl.isChamp ? 'bg-amber-400/10' : ''
+                  }`}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span
+                      className={`w-4.5 h-4.5 rounded-full text-[9.5px] font-black flex items-center justify-center shrink-0 ${
+                        idx === 0
+                          ? 'bg-amber-400 text-slate-950 shadow-sm'
+                          : idx === 1
+                            ? 'bg-slate-300 text-slate-950'
+                            : idx === 2
+                              ? 'bg-amber-700/80 text-amber-100'
+                              : 'bg-slate-800 text-slate-400'
+                      }`}
+                    >
+                      {idx + 1}
+                    </span>
+                    <TokenAvatar token={pl.token} color={pl.color} size={24} />
+                    <div className="min-w-0">
+                      <div className="font-extrabold text-[11.5px] text-white truncate flex items-center gap-1 leading-tight">
+                        <span className="truncate">{pl.name}</span>
+                        {pl.id === myPlayerId && (
+                          <span className="px-1 py-0.2 rounded bg-sky-500 text-slate-950 text-[8px] font-black shrink-0">
+                            ВИ
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[9px] font-semibold text-slate-400 leading-tight">
+                        {pl.isChamp
+                          ? '🏆 Переможець КАБЗДА.UA'
+                          : 'Банкрут • Вибув з гонки'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="text-right shrink-0">
+                    {pl.isBankrupt && !pl.isChamp ? (
+                      <span className="px-1.5 py-0.5 rounded-md bg-rose-500/15 border border-rose-400/30 text-rose-300 text-[9.5px] font-extrabold">
+                        0 ₴
+                      </span>
+                    ) : (
+                      <span className="font-display font-extrabold text-xs text-amber-300 tabular-nums">
+                        {formatMoney(pl.netWorth)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* === 3. PINNED BOTTOM ACTION BAR (ALWAYS VISIBLE) === */}
+        <div className="shrink-0 px-3.5 sm:px-5 py-2.5 sm:py-3.5 border-t border-white/10 bg-slate-950/65 flex gap-2">
           {(gameState.players.some((p) => p.id === myPlayerId && !p.isBot) ||
-            gameState.eliminatedPlayers?.some((p) => p.id === myPlayerId)) && (
+            gameState.eliminatedPlayers?.some(
+              (p) => p.id === myPlayerId
+            )) && (
             <button
               onClick={onRematchLobby}
-              className="flex-1 py-3.5 rounded-2xl mono-cta-btn font-display font-bold text-xs flex items-center justify-center gap-2 cursor-pointer"
+              className="flex-1 py-2.5 sm:py-3 rounded-2xl mono-cta-btn font-display font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-lg"
             >
               <RotateCcw className="w-4 h-4" />
               Реванш у кімнаті
@@ -832,7 +1147,7 @@ export const VictoryModal: React.FC<{
           )}
           <button
             onClick={onExitHome}
-            className="flex-1 py-3.5 rounded-2xl bg-white/12 hover:bg-white/20 text-white font-display font-bold text-xs cursor-pointer"
+            className="flex-1 py-2.5 sm:py-3 rounded-2xl bg-white/12 hover:bg-white/20 border border-white/15 text-white font-display font-bold text-xs cursor-pointer transition"
           >
             На головну
           </button>
