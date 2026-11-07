@@ -50,45 +50,85 @@ export const TryzubLogo: React.FC<{ className?: string }> = ({
   );
 };
 
+export const KabzdaBoltIcon: React.FC<{
+  className?: string;
+  variant?: 'ingot' | 'glow';
+}> = ({ className = 'w-3 h-3', variant = 'glow' }) => {
+  const uid = useId();
+  const gradId = `kabzda_bolt_${uid}`;
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+      className={`shrink-0 ${className}`}
+    >
+      {variant === 'glow' && (
+        <defs>
+          <linearGradient
+            id={gradId}
+            x1="4"
+            y1="2"
+            x2="20"
+            y2="22"
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop offset="0%" stopColor="#FFFBEB" />
+            <stop offset="45%" stopColor="#FACC15" />
+            <stop offset="100%" stopColor="#F59E0B" />
+          </linearGradient>
+        </defs>
+      )}
+      <path
+        d="M13.5 2L4.5 13.2H11.4L9.8 22L19.5 10.4H12.6L13.5 2Z"
+        fill={variant === 'ingot' ? 'currentColor' : `url(#${gradId})`}
+        stroke={variant === 'ingot' ? 'none' : '#78350F'}
+        strokeWidth={variant === 'ingot' ? '0' : '0.8'}
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+};
+
 export const MagnatBrandIcon: React.FC<{
   size?: 'xs' | 'sm' | 'md' | 'lg';
   className?: string;
 }> = ({ size = 'lg', className = '' }) => {
   const dims =
     size === 'xs'
-      ? 'w-7 h-7 rounded-lg p-[1px]'
+      ? 'w-7 h-7 rounded-lg p-[1.5px]'
       : size === 'sm'
         ? 'w-9.5 h-9.5 2xl:w-10.5 2xl:h-10.5 rounded-xl p-[1.5px]'
         : size === 'md'
           ? 'w-11.5 h-11.5 sm:w-12.5 sm:h-12.5 rounded-xl sm:rounded-2xl p-[1.5px]'
-          : 'w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl p-[1.5px]';
+          : 'w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-[17px] p-[1.5px]';
 
   const innerRadius =
     size === 'xs'
-      ? 'rounded-[7px]'
+      ? 'rounded-[6.5px]'
       : size === 'sm'
         ? 'rounded-[10.5px]'
-        : 'rounded-[10.5px] sm:rounded-[14.5px]';
+        : 'rounded-[10.5px] sm:rounded-[15.5px]';
 
   return (
     <div
       className={`magnat-3d-emblem-shell relative shrink-0 select-none transition-transform duration-300 hover:scale-[1.05] hover:-rotate-1 ${dims} ${className}`}
     >
       <div
-        className={`relative w-full h-full ${innerRadius} overflow-hidden bg-[#041222]`}
+        className={`relative w-full h-full ${innerRadius} overflow-hidden bg-[#050C1A]`}
       >
         <img
-          src="/images/kabzda-cat-icon.jpg"
-          alt="КАБЗДА.UA — Бос-Магнат, Золоті Злитки, Блискавки та 3D-Кубики"
+          src="/images/kabzda-cat-icon.jpg?v=2"
+          alt="КАБЗДА.UA — Кіт-Магнат, 3D-Кубики та Блискавки"
           decoding="async"
-          className="w-full h-full object-cover contrast-[1.04] saturate-[1.08]"
+          className="w-full h-full object-cover contrast-[1.04] saturate-[1.06]"
         />
-        {/* Subtle Crystal Top-Left Rim Sheen */}
+        {/* Subtle Crystal Top-Left Rim Sheen + Inner Vignette Ring */}
         <div
-          className="absolute inset-0 pointer-events-none"
+          className="absolute inset-0 pointer-events-none rounded-[inherit] ring-1 ring-inset ring-white/15"
           style={{
             background:
-              'linear-gradient(145deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.02) 32%, transparent 48%)',
+              'linear-gradient(145deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.03) 34%, transparent 52%)',
           }}
         />
       </div>
@@ -102,21 +142,35 @@ export const MagnatWordmark: React.FC<{
 }> = ({ size = 'lg', showCountryBadge = false }) => {
   const textClass =
     size === 'xs'
-      ? 'text-[11.5px] tracking-[0.025em]'
+      ? 'text-[11.5px] tracking-[0.035em]'
       : size === 'sm'
-        ? 'text-xs sm:text-[13.5px] 2xl:text-[15px] tracking-[0.03em]'
-        : 'text-lg sm:text-[22px] tracking-[0.035em]';
+        ? 'text-xs sm:text-[13.5px] 2xl:text-[15px] tracking-[0.04em]'
+        : 'text-lg sm:text-[23px] tracking-[0.045em]';
 
   const ingotClass =
     size === 'xs'
-      ? 'px-1.5 py-[1.5px] text-[8px] rounded-full -translate-y-[0.5px]'
+      ? 'h-[16px] px-1.5 text-[8px] rounded-full'
       : size === 'sm'
-        ? 'px-2 py-[2px] text-[9px] 2xl:text-[9.5px] rounded-full -translate-y-[0.5px]'
-        : 'px-2.5 sm:px-3 py-[3px] text-[10.5px] sm:text-[11.5px] rounded-full -translate-y-[1px]';
+        ? 'h-[18px] 2xl:h-[19px] px-2 text-[9px] 2xl:text-[9.5px] rounded-full'
+        : 'h-[21px] sm:h-[23px] px-2.5 sm:px-3 text-[10px] sm:text-[11px] rounded-full';
+
+  const boltSizeClass =
+    size === 'xs'
+      ? 'w-2.5 h-2.5'
+      : size === 'sm'
+        ? 'w-2.5 h-2.5 2xl:w-3 2xl:h-3'
+        : 'w-3 h-3 sm:w-3.5 sm:h-3.5';
+
+  const badgeHeightClass =
+    size === 'xs'
+      ? 'h-[16px] px-2 text-[8px]'
+      : size === 'sm'
+        ? 'h-[18px] 2xl:h-[19px] px-2.5 text-[8.5px]'
+        : 'h-[21px] sm:h-[23px] px-3 text-[9.5px]';
 
   return (
     <div className="inline-flex items-center gap-2 shrink-0">
-      <div className="inline-flex items-center gap-1.5 shrink-0 whitespace-nowrap select-none py-0.5">
+      <div className="inline-flex items-center gap-2 shrink-0 whitespace-nowrap select-none py-0.5">
         {/* True 3D Extruded Block Wordmark (zero Chromium background-clip + filter dark-box glitch) */}
         <span
           className={`relative inline-grid shrink-0 font-display font-extrabold ${textClass} leading-none`}
@@ -132,20 +186,22 @@ export const MagnatWordmark: React.FC<{
           </span>
         </span>
 
-        {/* Minted 3D 24K Gold UA Deed Ingot */}
+        {/* Minted 3D 24K Gold UA Deed Ingot with Crisp Vector Lightning Bolt */}
         <span
-          className={`magnat-ua-ingot inline-flex items-center justify-center gap-0.5 font-display font-extrabold leading-none tracking-[0.06em] shrink-0 ${ingotClass}`}
+          className={`magnat-ua-ingot inline-flex items-center justify-center gap-1 font-display font-black leading-none tracking-[0.06em] shrink-0 ${ingotClass}`}
         >
-          <span>⚡</span>
+          <KabzdaBoltIcon variant="ingot" className={boltSizeClass} />
           <span>UA</span>
         </span>
       </div>
 
       {showCountryBadge && (
-        <span className="magnat-edition-badge hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 text-[9.5px] font-extrabold uppercase tracking-[0.14em] rounded-full text-slate-700 dark:text-amber-200/95 shrink-0 whitespace-nowrap select-none">
+        <span
+          className={`magnat-edition-badge hidden sm:inline-flex items-center gap-1.5 ${badgeHeightClass} font-extrabold uppercase tracking-[0.14em] rounded-full text-slate-700 dark:text-amber-200/95 shrink-0 whitespace-nowrap select-none`}
+        >
           <span
             aria-hidden="true"
-            className="w-1.5 h-3 rounded-full overflow-hidden flex flex-col shrink-0 ring-1 ring-black/10 dark:ring-white/20"
+            className="w-1.5 h-3 rounded-full overflow-hidden flex flex-col shrink-0 ring-1 ring-black/15 dark:ring-white/25"
           >
             <span className="w-full h-1/2 bg-[#0057B8]" />
             <span className="w-full h-1/2 bg-[#FFD700]" />
