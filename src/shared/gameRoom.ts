@@ -96,9 +96,9 @@ export class GameRoom {
         normalizedMode === 'team2v2'
           ? MAX_GAME_PLAYERS
           : Math.min(
-              MAX_GAME_PLAYERS,
-              Math.max(2, Number(settings.maxPlayers) || MAX_GAME_PLAYERS)
-            ),
+            MAX_GAME_PLAYERS,
+            Math.max(2, Number(settings.maxPlayers) || MAX_GAME_PLAYERS)
+          ),
     };
 
     const properties: Record<number, PropertyState> = {};
@@ -222,9 +222,9 @@ export class GameRoom {
     this.state.settings.maxPlayers = this.isTeamMode()
       ? MAX_GAME_PLAYERS
       : Math.min(
-          MAX_GAME_PLAYERS,
-          Math.max(2, Number(this.state.settings.maxPlayers) || MAX_GAME_PLAYERS)
-        );
+        MAX_GAME_PLAYERS,
+        Math.max(2, Number(this.state.settings.maxPlayers) || MAX_GAME_PLAYERS)
+      );
     this.state.winningTeamId = saved.winningTeamId ?? null;
     this.state.playerActedThisTurn = Boolean(saved.playerActedThisTurn);
     this.state.eliminatedPlayers = saved.eliminatedPlayers ?? [];
@@ -503,15 +503,15 @@ export class GameRoom {
     // 1. Disconnected human matching name (preferring non-host first if numbered suffix)
     const reclaimDisconnectedByName = normalizedName
       ? (disconnectedHumans.find(
-          (p) => p.id !== this.state.hostId && matchesNameOrNumbered(p)
-        ) ?? disconnectedHumans.find((p) => matchesNameOrNumbered(p)))
+        (p) => p.id !== this.state.hostId && matchesNameOrNumbered(p)
+      ) ?? disconnectedHumans.find((p) => matchesNameOrNumbered(p)))
       : undefined;
 
     // 2. Sole disconnected human in an active match
     const reclaimSoleDisconnected =
       !reclaimDisconnectedByName &&
-      this.state.status !== 'lobby' &&
-      disconnectedHumans.length === 1
+        this.state.status !== 'lobby' &&
+        disconnectedHumans.length === 1
         ? disconnectedHumans[0]
         : undefined;
 
@@ -543,8 +543,8 @@ export class GameRoom {
           ) ??
           nonHostHumans.find((p) => matchesNameOrNumbered(p)) ??
           (nonHostHumans.length === 1 &&
-          (!nonHostHumans[0].lastSeenAt ||
-            now - nonHostHumans[0].lastSeenAt > 2500)
+            (!nonHostHumans[0].lastSeenAt ||
+              now - nonHostHumans[0].lastSeenAt > 2500)
             ? nonHostHumans[0]
             : undefined) ??
           activeHumans.find(
@@ -1646,8 +1646,8 @@ export class GameRoom {
     }
     const prevMove =
       this.isChainingRollMoves &&
-      this.state.lastMove &&
-      this.state.lastMove.playerId === player.id
+        this.state.lastMove &&
+        this.state.lastMove.playerId === player.id
         ? this.state.lastMove
         : null;
 
@@ -1678,8 +1678,8 @@ export class GameRoom {
     const from = player.position;
     const prevMove =
       this.isChainingRollMoves &&
-      this.state.lastMove &&
-      this.state.lastMove.playerId === player.id
+        this.state.lastMove &&
+        this.state.lastMove.playerId === player.id
         ? this.state.lastMove
         : null;
 
@@ -2007,8 +2007,7 @@ export class GameRoom {
       };
       this.addLog(
         'event',
-        `${player.name} • «${card.title}» — зібрано +${formatMoney(collected)} від ${
-          this.isTeamMode() ? 'суперників' : 'учасників'
+        `${player.name} • «${card.title}» — зібрано +${formatMoney(collected)} від ${this.isTeamMode() ? 'суперників' : 'учасників'
         }!`,
         player.id
       );
@@ -2857,7 +2856,7 @@ export class GameRoom {
     if (!trade) return { ok: false, error: 'Договір вже неактивний' };
     if (
       responderId !== trade.toPlayerId &&
-      !( !accept && responderId === trade.fromPlayerId )
+      !(!accept && responderId === trade.fromPlayerId)
     ) {
       return { ok: false, error: 'Ви не є стороною цього рішення' };
     }
@@ -3488,16 +3487,16 @@ export class GameRoom {
       const hasMidJourneyEventCardPause =
         Boolean(
           this.state.latestEventCard &&
-            this.state.latestEventCard.playerId === playerId &&
-            diceSum > 0 &&
-            stepsCount > diceSum
+          this.state.latestEventCard.playerId === playerId &&
+          diceSum > 0 &&
+          stepsCount > diceSum
         );
       const totalMoveMs =
         stepsCount > 0
           ? initialDelay +
-            stepsCount * stepMs +
-            (hasMidJourneyEventCardPause ? 3450 : 0) +
-            220
+          stepsCount * stepMs +
+          (hasMidJourneyEventCardPause ? 3450 : 0) +
+          220
           : 0;
       const moveElapsed = now - this.lastMoveTimestamp;
       const remMove = moveElapsed < totalMoveMs ? totalMoveMs - moveElapsed : 0;
@@ -3555,15 +3554,15 @@ export class GameRoom {
         const teammate = this.getTeammate(active.id);
         const completesMonopoly = Boolean(
           cell.sector &&
-            getSectorCells(cell.sector).filter(
-              (c) =>
-                c.index !== cell.index &&
-                (this.state.properties[c.index]?.ownerId === active.id ||
-                  (teammate &&
-                    !teammate.isBankrupt &&
-                    this.state.properties[c.index]?.ownerId === teammate.id))
-            ).length ===
-              getSectorCells(cell.sector).length - 1
+          getSectorCells(cell.sector).filter(
+            (c) =>
+              c.index !== cell.index &&
+              (this.state.properties[c.index]?.ownerId === active.id ||
+                (teammate &&
+                  !teammate.isBankrupt &&
+                  this.state.properties[c.index]?.ownerId === teammate.id))
+          ).length ===
+          getSectorCells(cell.sector).length - 1
         );
 
         if (active.money < cell.price && completesMonopoly) {
@@ -3745,13 +3744,13 @@ export class GameRoom {
         const cell = BOARD_CELLS[prop.cellIndex];
         const unlocksSectorMonopoly = Boolean(
           cell?.type === 'company' &&
-            cell.sector &&
-            hasFullSectorMonopoly(
-              bot.id,
-              cell.sector,
-              this.state.properties,
-              true
-            )
+          cell.sector &&
+          hasFullSectorMonopoly(
+            bot.id,
+            cell.sector,
+            this.state.properties,
+            true
+          )
         );
         const minCushion = unlocksSectorMonopoly ? 900 : 2100;
         if (bot.money - cost >= minCushion) {
@@ -3938,8 +3937,8 @@ export class GameRoom {
       const allyOwned =
         teammate && !teammate.isBankrupt
           ? sectorCells.filter(
-              (c) => this.state.properties[c.index]?.ownerId === teammate.id
-            ).length
+            (c) => this.state.properties[c.index]?.ownerId === teammate.id
+          ).length
           : 0;
 
       if (botOwned === sectorCells.length - 1) {
@@ -3998,13 +3997,13 @@ export class GameRoom {
             const c = BOARD_CELLS[idx];
             return Boolean(
               c?.type === 'company' &&
-                c.sector &&
-                hasFullSectorMonopoly(
-                  bot.id,
-                  c.sector,
-                  this.state.properties,
-                  false
-                )
+              c.sector &&
+              hasFullSectorMonopoly(
+                bot.id,
+                c.sector,
+                this.state.properties,
+                false
+              )
             );
           }
         );
@@ -4283,13 +4282,13 @@ export class GameRoom {
         const c = BOARD_CELLS[idx];
         return Boolean(
           c?.type === 'company' &&
-            c.sector &&
-            hasFullSectorMonopoly(
-              bot.id,
-              c.sector,
-              this.state.properties,
-              false
-            )
+          c.sector &&
+          hasFullSectorMonopoly(
+            bot.id,
+            c.sector,
+            this.state.properties,
+            false
+          )
         );
       });
       const proposerInEmergencyDebt =
@@ -4463,15 +4462,15 @@ export class GameRoom {
       const teammate = this.getTeammate(active.id);
       const completesMonopoly = Boolean(
         cell.sector &&
-          getSectorCells(cell.sector).filter(
-            (c) =>
-              c.index !== cell.index &&
-              (this.state.properties[c.index]?.ownerId === active.id ||
-                (teammate &&
-                  !teammate.isBankrupt &&
-                  this.state.properties[c.index]?.ownerId === teammate.id))
-          ).length ===
-            getSectorCells(cell.sector).length - 1
+        getSectorCells(cell.sector).filter(
+          (c) =>
+            c.index !== cell.index &&
+            (this.state.properties[c.index]?.ownerId === active.id ||
+              (teammate &&
+                !teammate.isBankrupt &&
+                this.state.properties[c.index]?.ownerId === teammate.id))
+        ).length ===
+        getSectorCells(cell.sector).length - 1
       );
 
       if (active.money < cell.price && completesMonopoly) {
