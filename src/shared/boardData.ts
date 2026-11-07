@@ -194,7 +194,7 @@ export const BOARD_CELLS: BoardCell[] = [
   {
     index: 1,
     name: 'Галицька Пекарня',
-    shortName: 'Галицька Пекарня',
+    shortName: 'Пекарня',
     type: 'company',
     sector: 'coffee',
     sectorName: 'Кав’ярні та Пекарні',
@@ -209,7 +209,7 @@ export const BOARD_CELLS: BoardCell[] = [
   {
     index: 2,
     name: 'Цифровий Пуш',
-    shortName: 'Цифровий Пуш',
+    shortName: 'Пуш UA',
     subtitle: 'Подія',
     type: 'event_diia',
     brandKey: 'gov_push',
@@ -219,7 +219,7 @@ export const BOARD_CELLS: BoardCell[] = [
   {
     index: 3,
     name: 'Кава Подолу',
-    shortName: 'Кава Подолу',
+    shortName: 'Поділ',
     type: 'company',
     sector: 'coffee',
     sectorName: 'Кав’ярні та Пекарні',
@@ -234,7 +234,7 @@ export const BOARD_CELLS: BoardCell[] = [
   {
     index: 4,
     name: 'Внесок на Оборону',
-    shortName: 'На Оборону',
+    shortName: 'Оборона',
     subtitle: '-2 000 ₴',
     type: 'tax',
     brandKey: 'defense_fund',
@@ -245,7 +245,7 @@ export const BOARD_CELLS: BoardCell[] = [
   {
     index: 5,
     name: 'Залізний Експрес',
-    shortName: 'Залізний Експрес',
+    shortName: 'Експрес',
     type: 'transport',
     sector: 'transport',
     sectorName: 'Стратегічний Транспорт',
@@ -259,7 +259,7 @@ export const BOARD_CELLS: BoardCell[] = [
   {
     index: 6,
     name: 'Маркет 24/7',
-    shortName: 'Маркет 24/7',
+    shortName: 'Маркет 24',
     type: 'company',
     sector: 'retail',
     sectorName: 'Магазини та Супермаркети',
@@ -274,7 +274,7 @@ export const BOARD_CELLS: BoardCell[] = [
   {
     index: 7,
     name: 'Фонд Єдності',
-    shortName: 'Фонд Єдності',
+    shortName: 'Єдність',
     subtitle: 'Шанс та події',
     type: 'event_unity',
     brandKey: 'unity_fund',
@@ -284,7 +284,7 @@ export const BOARD_CELLS: BoardCell[] = [
   {
     index: 8,
     name: 'Сяйво Мультимаркет',
-    shortName: 'Сяйво Маркет',
+    shortName: 'Сяйво',
     type: 'company',
     sector: 'retail',
     sectorName: 'Магазини та Супермаркети',
@@ -299,7 +299,7 @@ export const BOARD_CELLS: BoardCell[] = [
   {
     index: 9,
     name: 'Лавка Смаку',
-    shortName: 'Лавка Смаку',
+    shortName: 'Лавка',
     type: 'company',
     sector: 'retail',
     sectorName: 'Магазини та Супермаркети',
@@ -327,7 +327,7 @@ export const BOARD_CELLS: BoardCell[] = [
   {
     index: 11,
     name: 'Козацька Пошта',
-    shortName: 'Козацька Пошта',
+    shortName: 'Козацька',
     type: 'company',
     sector: 'delivery',
     sectorName: 'Пошта та Доставка',
@@ -342,7 +342,7 @@ export const BOARD_CELLS: BoardCell[] = [
   {
     index: 12,
     name: 'Цифрова Хмара UA',
-    shortName: 'Цифрова Хмара',
+    shortName: 'Хмара UA',
     type: 'utility',
     sector: 'utility',
     sectorName: 'Критична Інфраструктура',
@@ -355,7 +355,7 @@ export const BOARD_CELLS: BoardCell[] = [
   {
     index: 13,
     name: 'Міст Експрес',
-    shortName: 'Міст Експрес',
+    shortName: 'Міст',
     type: 'company',
     sector: 'delivery',
     sectorName: 'Пошта та Доставка',
@@ -370,7 +370,7 @@ export const BOARD_CELLS: BoardCell[] = [
   {
     index: 14,
     name: 'Блискавка Пошта',
-    shortName: 'Блискавка Пошта',
+    shortName: 'Блискавка',
     type: 'company',
     sector: 'delivery',
     sectorName: 'Пошта та Доставка',
@@ -385,7 +385,7 @@ export const BOARD_CELLS: BoardCell[] = [
   {
     index: 15,
     name: 'Стріла Таксі',
-    shortName: 'Стріла Таксі',
+    shortName: 'Стріла',
     type: 'transport',
     sector: 'transport',
     sectorName: 'Стратегічний Транспорт',
@@ -399,7 +399,7 @@ export const BOARD_CELLS: BoardCell[] = [
   {
     index: 16,
     name: 'Нафта Карпат',
-    shortName: 'Нафта Карпат',
+    shortName: 'Нафта UA',
     type: 'company',
     sector: 'fuel',
     sectorName: 'Пальне та Заправки',
@@ -414,7 +414,7 @@ export const BOARD_CELLS: BoardCell[] = [
   {
     index: 17,
     name: 'Цифровий Пуш',
-    shortName: 'Цифровий Пуш',
+    shortName: 'Пуш UA',
     subtitle: 'Подія',
     type: 'event_diia',
     brandKey: 'gov_push',
@@ -424,7 +424,7 @@ export const BOARD_CELLS: BoardCell[] = [
   {
     index: 18,
     name: 'Мустанг Ойл',
-    shortName: 'Мустанг Ойл',
+    shortName: 'Мустанг',
     type: 'company',
     sector: 'fuel',
     sectorName: 'Пальне та Заправки',
@@ -467,7 +467,7 @@ export const BOARD_CELLS: BoardCell[] = [
   {
     index: 21,
     name: 'Ярмарок UA',
-    shortName: 'Ярмарок UA',
+    shortName: 'Ярмарок',
     type: 'company',
     sector: 'ecommerce',
     sectorName: 'Торгівля та Гіпермаркети',
@@ -482,7 +482,7 @@ export const BOARD_CELLS: BoardCell[] = [
   {
     index: 22,
     name: 'Фонд Єдності',
-    shortName: 'Фонд Єдності',
+    shortName: 'Єдність',
     subtitle: 'Шанс та події',
     type: 'event_unity',
     brandKey: 'unity_fund',
@@ -522,7 +522,7 @@ export const BOARD_CELLS: BoardCell[] = [
   {
     index: 25,
     name: 'Чорноморський Порт',
-    shortName: 'Порт Південь',
+    shortName: 'Морпорт',
     type: 'transport',
     sector: 'transport',
     sectorName: 'Стратегічний Транспорт',
@@ -536,7 +536,7 @@ export const BOARD_CELLS: BoardCell[] = [
   {
     index: 26,
     name: 'Хвиля Мобайл',
-    shortName: 'Хвиля Мобайл',
+    shortName: 'Хвиля',
     type: 'company',
     sector: 'telecom',
     sectorName: 'Зв’язок та Інтернет',
@@ -551,7 +551,7 @@ export const BOARD_CELLS: BoardCell[] = [
   {
     index: 27,
     name: 'Лайф Пульс',
-    shortName: 'Лайф Пульс',
+    shortName: 'Лайф',
     type: 'company',
     sector: 'telecom',
     sectorName: 'Зв’язок та Інтернет',
@@ -566,7 +566,7 @@ export const BOARD_CELLS: BoardCell[] = [
   {
     index: 28,
     name: 'Енерго Мережа UA',
-    shortName: 'Енерго Мережа',
+    shortName: 'Енерго',
     type: 'utility',
     sector: 'utility',
     sectorName: 'Критична Інфраструктура',
@@ -579,7 +579,7 @@ export const BOARD_CELLS: BoardCell[] = [
   {
     index: 29,
     name: 'Зірка Телеком',
-    shortName: 'Зірка Телеком',
+    shortName: 'Зірка',
     type: 'company',
     sector: 'telecom',
     sectorName: 'Зв’язок та Інтернет',
@@ -607,7 +607,7 @@ export const BOARD_CELLS: BoardCell[] = [
   {
     index: 31,
     name: 'Кібер Лапа',
-    shortName: 'Кібер Лапа',
+    shortName: 'КіберЛапа',
     type: 'company',
     sector: 'tech',
     sectorName: 'ІТ та Технології',
@@ -637,7 +637,7 @@ export const BOARD_CELLS: BoardCell[] = [
   {
     index: 33,
     name: 'Цифровий Пуш',
-    shortName: 'Цифровий Пуш',
+    shortName: 'Пуш UA',
     subtitle: 'Подія',
     type: 'event_diia',
     brandKey: 'gov_push',
@@ -647,7 +647,7 @@ export const BOARD_CELLS: BoardCell[] = [
   {
     index: 34,
     name: 'Оберіг Системс',
-    shortName: 'Оберіг Системс',
+    shortName: 'Оберіг',
     type: 'company',
     sector: 'tech',
     sectorName: 'ІТ та Технології',
@@ -662,7 +662,7 @@ export const BOARD_CELLS: BoardCell[] = [
   {
     index: 35,
     name: 'Крила Карго',
-    shortName: 'Крила Карго',
+    shortName: 'Крила',
     type: 'transport',
     sector: 'transport',
     sectorName: 'Стратегічний Транспорт',
@@ -676,7 +676,7 @@ export const BOARD_CELLS: BoardCell[] = [
   {
     index: 36,
     name: 'Фонд Єдності',
-    shortName: 'Фонд Єдності',
+    shortName: 'Єдність',
     subtitle: 'Шанс та події',
     type: 'event_unity',
     brandKey: 'unity_fund',
@@ -686,7 +686,7 @@ export const BOARD_CELLS: BoardCell[] = [
   {
     index: 37,
     name: 'Народний Банк',
-    shortName: 'Народний Банк',
+    shortName: 'Народний',
     type: 'company',
     sector: 'fintech',
     sectorName: 'Банки та Фінанси',
@@ -712,7 +712,7 @@ export const BOARD_CELLS: BoardCell[] = [
   {
     index: 39,
     name: 'Необанк Лев',
-    shortName: 'Необанк Лев',
+    shortName: 'Необанк',
     type: 'company',
     sector: 'fintech',
     sectorName: 'Банки та Фінанси',

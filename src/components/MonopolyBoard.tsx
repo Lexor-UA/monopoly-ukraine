@@ -1335,29 +1335,29 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
                   className={`relative z-[4] w-full h-full flex flex-col justify-end overflow-hidden ${
                     pos.side === 'left'
                       ? isPhoneBoard
-                        ? `pl-[2.5px] ${hasInnerSectorBand ? 'pr-[6.5px]' : 'pr-1'} py-[1.5px]`
-                        : `${isCompactBoard || isLaptopBoard ? 'pl-1.5' : 'pl-2'} ${
+                        ? `pl-[1.5px] ${hasInnerSectorBand ? 'pr-[5.5px]' : 'pr-0.5'} py-[1.5px]`
+                        : `${isCompactBoard || isLaptopBoard ? 'pl-1' : 'pl-2'} ${
                             hasInnerSectorBand
                               ? isCompactBoard
-                                ? 'pr-[13px]'
+                                ? 'pr-[12.5px]'
                                 : isWideBoard
                                   ? 'pr-[17.5px]'
-                                  : 'pr-[15.5px]'
+                                  : 'pr-[15px]'
                               : isCompactBoard || isLaptopBoard
-                                ? 'pr-1.5'
+                                ? 'pr-1'
                                 : 'pr-2'
                           } pt-1 pb-1`
                       : isPhoneBoard
-                        ? `pr-[2.5px] ${hasInnerSectorBand ? 'pl-[6.5px]' : 'pl-1'} py-[1.5px]`
-                        : `${isCompactBoard || isLaptopBoard ? 'pr-1.5' : 'pr-2'} ${
+                        ? `pr-[1.5px] ${hasInnerSectorBand ? 'pl-[5.5px]' : 'pl-0.5'} py-[1.5px]`
+                        : `${isCompactBoard || isLaptopBoard ? 'pr-1' : 'pr-2'} ${
                             hasInnerSectorBand
                               ? isCompactBoard
-                                ? 'pl-[13px]'
+                                ? 'pl-[12.5px]'
                                 : isWideBoard
                                   ? 'pl-[17.5px]'
-                                  : 'pl-[15.5px]'
+                                  : 'pl-[15px]'
                               : isCompactBoard || isLaptopBoard
-                                ? 'pl-1.5'
+                                ? 'pl-1'
                                 : 'pl-2'
                           } pt-1 pb-1`
                   }`}
@@ -1373,14 +1373,14 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
                         pos.side === 'right' ? 'text-right' : 'text-left'
                       } ${
                         isUltraCompact
-                          ? 'text-[6.8px] leading-[1.02] tracking-[-0.03em]'
+                          ? 'text-[6.1px] leading-[1.02] tracking-[-0.035em]'
                           : isPhoneBoard
-                            ? 'text-[7.4px] leading-[1.04] tracking-[-0.025em]'
+                            ? 'text-[6.8px] leading-[1.04] tracking-[-0.025em]'
                             : isCompactBoard
-                              ? 'text-[8px] leading-[1.05] tracking-[-0.02em]'
+                              ? 'text-[7.8px] leading-[1.05] tracking-[-0.02em]'
                               : isLaptopBoard
-                                ? 'text-[8.6px] leading-[1.06] tracking-[-0.02em]'
-                                : 'text-[9.8px] 2xl:text-[10.8px] leading-[1.08]'
+                                ? 'text-[8.4px] leading-[1.06] tracking-[-0.02em]'
+                                : 'text-[9.6px] 2xl:text-[10.6px] leading-[1.08]'
                       } font-bold text-white truncate`}
                     >
                       {cell.shortName}
@@ -1465,12 +1465,12 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
                   className={`relative z-[4] w-full h-full flex flex-col justify-end overflow-hidden ${
                     pos.side === 'bottom'
                       ? isPhoneBoard
-                        ? 'pt-1.5 pb-1 px-0.5'
+                        ? 'pt-1.5 pb-1 px-[1px]'
                         : isCompactBoard || isLaptopBoard
                           ? 'pt-1.5 pb-1 px-[2px]'
                           : 'pt-2 pb-1.5 px-1'
                       : isPhoneBoard
-                        ? `pt-0.5 ${hasInnerSectorBand ? 'pb-[8px]' : 'pb-1'} px-0.5`
+                        ? `pt-0.5 ${hasInnerSectorBand ? 'pb-[8px]' : 'pb-1'} px-[1px]`
                         : `pt-1 ${
                             hasInnerSectorBand
                               ? isCompactBoard
@@ -1487,15 +1487,15 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
                     <div
                       className={`w-full board-card-caption ${
                         isUltraCompact
-                          ? 'text-[6.5px] leading-[1.01] tracking-[-0.035em]'
+                          ? 'text-[5.7px] leading-[1.01] tracking-[-0.04em] line-clamp-2 overflow-hidden text-ellipsis'
                           : isPhoneBoard
-                            ? 'text-[7.1px] leading-[1.03] tracking-[-0.025em]'
+                            ? 'text-[6.4px] leading-[1.02] tracking-[-0.03em] line-clamp-2 overflow-hidden text-ellipsis'
                             : isCompactBoard
-                              ? 'text-[7.5px] leading-[1.04] tracking-[-0.025em]'
+                              ? 'text-[7.5px] leading-[1.04] tracking-[-0.02em] truncate'
                               : isLaptopBoard
-                                ? 'text-[8.1px] leading-[1.05] tracking-[-0.02em]'
-                                : 'text-[9.5px] 2xl:text-[10px] leading-[1.08]'
-                      } font-bold text-white line-clamp-2 overflow-hidden text-ellipsis`}
+                                ? 'text-[8.1px] leading-[1.05] tracking-[-0.02em] truncate'
+                                : 'text-[9.4px] 2xl:text-[10px] leading-[1.08] truncate'
+                      } font-bold text-white`}
                     >
                       {cell.shortName}
                     </div>
