@@ -78,10 +78,10 @@ export const MagnatBrandIcon: React.FC<{
         className={`relative w-full h-full ${innerRadius} overflow-hidden bg-[#041222]`}
       >
         <img
-          src="/images/magnat-crest-icon.jpg"
-          alt="КАБЗДА.UA — Коронований Золотий Тризуб, Хмарочоси та Кубики"
+          src="/images/kabzda-cat-icon.jpg"
+          alt="КАБЗДА.UA — Бос-Магнат, Золоті Злитки, Блискавки та 3D-Кубики"
           decoding="async"
-          className="w-full h-full object-cover contrast-[1.03] saturate-[1.05]"
+          className="w-full h-full object-cover contrast-[1.04] saturate-[1.08]"
         />
         {/* Subtle Crystal Top-Left Rim Sheen */}
         <div
@@ -134,14 +134,15 @@ export const MagnatWordmark: React.FC<{
 
         {/* Minted 3D 24K Gold UA Deed Ingot */}
         <span
-          className={`magnat-ua-ingot inline-flex items-center justify-center font-display font-extrabold leading-none tracking-[0.06em] shrink-0 ${ingotClass}`}
+          className={`magnat-ua-ingot inline-flex items-center justify-center gap-0.5 font-display font-extrabold leading-none tracking-[0.06em] shrink-0 ${ingotClass}`}
         >
-          UA
+          <span>⚡</span>
+          <span>UA</span>
         </span>
       </div>
 
       {showCountryBadge && (
-        <span className="magnat-edition-badge hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 text-[9.5px] font-extrabold uppercase tracking-[0.15em] rounded-full text-slate-700 dark:text-amber-200/95 shrink-0 whitespace-nowrap select-none">
+        <span className="magnat-edition-badge hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 text-[9.5px] font-extrabold uppercase tracking-[0.14em] rounded-full text-slate-700 dark:text-amber-200/95 shrink-0 whitespace-nowrap select-none">
           <span
             aria-hidden="true"
             className="w-1.5 h-3 rounded-full overflow-hidden flex flex-col shrink-0 ring-1 ring-black/10 dark:ring-white/20"
@@ -149,7 +150,7 @@ export const MagnatWordmark: React.FC<{
             <span className="w-full h-1/2 bg-[#0057B8]" />
             <span className="w-full h-1/2 bg-[#FFD700]" />
           </span>
-          <span>Монополія</span>
+          <span>Бізнес-Битва</span>
         </span>
       )}
     </div>

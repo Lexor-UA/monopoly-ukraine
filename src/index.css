@@ -407,24 +407,29 @@ body,
 
 /* Pure solid-text 3D physical extrusion layer (ZERO background-clip + filter Chromium box artifact!) */
 .magnat-wordmark-extrude {
-  color: #cbd5e1;
+  color: #b45309;
   text-shadow:
-    0 1px 0 #94a3b8,
-    0 2px 0 #64748b,
-    0 4px 9px rgba(15, 23, 42, 0.16);
+    0 1px 0 #92400e,
+    0 2px 0 #78350f,
+    0 4px 10px rgba(180, 83, 9, 0.25);
 }
 
 [data-theme='dark'] .magnat-wordmark-extrude {
-  color: #1e293b;
+  color: #78350f;
   text-shadow:
-    0 1px 0 #0f172a,
+    0 1px 0 #451a03,
     0 2.5px 0 #020617,
-    0 6px 14px rgba(0, 0, 0, 0.78);
+    0 6px 16px rgba(245, 158, 11, 0.32);
 }
 
-/* Crisp brushed platinum-silver metallic front face */
+/* Crisp high-voltage 24K Gold & Platinum metallic front face for КАБЗДА */
 .magnat-wordmark-face {
-  background: linear-gradient(180deg, #0f172a 0%, #1e3a8a 54%, #0c4a6e 100%);
+  background: linear-gradient(
+    180deg,
+    #0f172a 0%,
+    #1e3a8a 45%,
+    #d97706 100%
+  );
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -434,9 +439,9 @@ body,
   background: linear-gradient(
     180deg,
     #ffffff 0%,
-    #f8fafc 42%,
-    #cbd5e1 78%,
-    #d6c7a9 100%
+    #fef08a 38%,
+    #fbbf24 76%,
+    #f59e0b 100%
   );
   -webkit-background-clip: text;
   background-clip: text;

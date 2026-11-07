@@ -214,7 +214,7 @@ export const HomeLobby: React.FC<HomeLobbyProps> = ({
                 <MagnatWordmark size="lg" showCountryBadge />
               </div>
               <p className="text-xs font-semibold text-[var(--text-secondary)] hidden sm:block truncate mt-0.5">
-                Перша українська преміальна економічна онлайн-стратегія
+                Купуй бізнеси, будуй монополії — влаштуй конкурентам повну кабзду! ⚡
               </p>
             </div>
           </div>
