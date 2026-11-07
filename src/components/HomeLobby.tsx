@@ -1279,7 +1279,7 @@ export const HomeLobby: React.FC<HomeLobbyProps> = ({
                 </div>
 
                 <div className="space-y-3">
-                  <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-2">
                     <button
                       disabled={roomBusy}
                       onClick={() => {
@@ -1288,10 +1288,12 @@ export const HomeLobby: React.FC<HomeLobbyProps> = ({
                         setShowCreateModal(true);
                       }}
                       title="Створити відкриту кімнату (з’явиться у списку на сайті)"
-                      className="py-3.5 px-3.5 rounded-2xl bg-gradient-to-r from-[#0057B8] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#3B82F6] dark:bg-none dark:bg-white dark:text-slate-950 dark:hover:bg-amber-300 text-white font-display font-bold text-xs sm:text-[13px] flex items-center justify-center gap-1.5 transition shadow-md disabled:opacity-60 cursor-pointer whitespace-nowrap"
+                      className="min-w-0 py-3 px-2.5 rounded-2xl bg-gradient-to-r from-[#0057B8] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#3B82F6] dark:bg-none dark:bg-white dark:text-slate-950 dark:hover:bg-amber-300 text-white font-display font-bold text-[11.5px] xl:text-xs flex items-center justify-center gap-1.5 transition shadow-md disabled:opacity-60 cursor-pointer whitespace-nowrap"
                     >
-                      <Globe className="w-4 h-4 shrink-0" />
-                      <span>{roomBusy ? 'Підключення...' : 'Відкрита кімната'}</span>
+                      <Globe className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">
+                        {roomBusy ? 'Підключення...' : 'Відкрита кімната'}
+                      </span>
                     </button>
 
                     <button
@@ -1302,10 +1304,10 @@ export const HomeLobby: React.FC<HomeLobbyProps> = ({
                         setShowCreateModal(true);
                       }}
                       title="Створити закриту приватну кімнату (вхід тільки за кодом або посиланням)"
-                      className="py-3.5 px-3.5 rounded-2xl bg-slate-900/6 hover:bg-slate-900/12 dark:bg-white/10 dark:hover:bg-white/18 border border-[var(--border-strong)] text-[var(--text-primary)] font-display font-extrabold text-xs sm:text-[13px] flex items-center justify-center gap-1.5 transition shadow-2xs disabled:opacity-60 cursor-pointer whitespace-nowrap"
+                      className="min-w-0 py-3 px-2.5 rounded-2xl bg-slate-900/6 hover:bg-slate-900/12 dark:bg-white/10 dark:hover:bg-white/18 border border-[var(--border-strong)] text-[var(--text-primary)] font-display font-extrabold text-[11.5px] xl:text-xs flex items-center justify-center gap-1.5 transition shadow-2xs disabled:opacity-60 cursor-pointer whitespace-nowrap"
                     >
-                      <Lock className="w-4 h-4 text-amber-500 dark:text-amber-300 shrink-0" />
-                      <span>Закрита кімната</span>
+                      <Lock className="w-3.5 h-3.5 text-amber-500 dark:text-amber-300 shrink-0" />
+                      <span className="truncate">Закрита кімната</span>
                     </button>
 
                     <button
@@ -1316,9 +1318,9 @@ export const HomeLobby: React.FC<HomeLobbyProps> = ({
                         setShowCreateModal(true);
                       }}
                       title="Створити командну онлайн-кімнату 2 на 2"
-                      className="py-3.5 px-3.5 rounded-2xl bg-amber-400/16 hover:bg-amber-400 hover:text-slate-950 border border-amber-400/45 text-amber-800 dark:text-amber-200 font-display font-extrabold text-xs sm:text-[13px] flex items-center justify-center gap-1.5 transition shadow-2xs disabled:opacity-60 cursor-pointer whitespace-nowrap"
+                      className="col-span-2 sm:col-span-1 py-3 px-3 rounded-2xl bg-amber-400/16 hover:bg-amber-400 hover:text-slate-950 border border-amber-400/45 text-amber-800 dark:text-amber-200 font-display font-extrabold text-[11.5px] xl:text-xs flex items-center justify-center gap-1.5 transition shadow-2xs disabled:opacity-60 cursor-pointer whitespace-nowrap shrink-0"
                     >
-                      <Handshake className="w-4 h-4 shrink-0" />
+                      <Handshake className="w-3.5 h-3.5 shrink-0" />
                       <span>2 на 2</span>
                     </button>
                   </div>
