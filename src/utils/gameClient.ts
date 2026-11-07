@@ -99,6 +99,8 @@ export class HybridGameClient {
   private cloudSyncInFlight = false;
   private cloudMutationSeq = 0;
   private cloudRoomVersion = 0;
+  private cloudLatestState: GameState | null = null;
+  private cloudLastPollAt = 0;
   private visibilityListener: (() => void) | null = null;
 
   // P2P / In-Browser Engine state
@@ -215,21 +217,55 @@ export class HybridGameClient {
     }
 
     if (!this.cloudSyncTimer) {
-      // Poll active room every 1000ms for real-time state, timers, and AI bot steps
+      // Adaptive polling: fast (950ms) during bot turns / auctions / trades,
+      // relaxed (1500-2200ms) during human turns or lobby, and throttled in hidden tabs
       this.cloudSyncTimer = setInterval(() => {
-        if (!this.destroyed && this.cloudActiveRoomCode) {
+        if (this.destroyed || !this.cloudActiveRoomCode) return;
+        const now = Date.now();
+        const isHidden =
+          typeof document !== 'undefined' &&
+          document.visibilityState === 'hidden';
+        if (isHidden) {
+          if (now - this.cloudLastPollAt >= 6000) {
+            void this.pollCloudRoom();
+          }
+          return;
+        }
+        const st = this.cloudLatestState;
+        const activePlayer = st?.players?.[st.turnIndex];
+        const isUrgentPhase =
+          !st ||
+          st.phase === 'AUCTION' ||
+          Boolean(st.pendingTrade) ||
+          Boolean(activePlayer?.isBot) ||
+          (typeof st.turnEndsAt === 'number' && st.turnEndsAt - now <= 4000);
+        const desiredInterval = isUrgentPhase
+          ? 950
+          : st.status === 'finished' || st.phase === 'GAME_OVER'
+            ? 4000
+            : st.status === 'lobby'
+              ? 2000
+              : activePlayer?.id === this.opts.playerId
+                ? 2200
+                : 1500;
+        if (now - this.cloudLastPollAt >= desiredInterval) {
           void this.pollCloudRoom();
         }
-      }, 1000);
+      }, 500);
     }
 
     if (!this.cloudLobbyTimer) {
-      // Refresh public lobby list when on home screen
+      // Refresh public lobby list when on home screen (skip when tab is hidden)
       this.cloudLobbyTimer = setInterval(() => {
-        if (!this.destroyed && !this.cloudActiveRoomCode) {
-          void this.fetchCloudLobbyRooms();
+        if (this.destroyed || this.cloudActiveRoomCode) return;
+        if (
+          typeof document !== 'undefined' &&
+          document.visibilityState === 'hidden'
+        ) {
+          return;
         }
-      }, 4500);
+        void this.fetchCloudLobbyRooms();
+      }, 6500);
     }
 
     if (typeof document !== 'undefined') {
@@ -283,6 +319,7 @@ export class HybridGameClient {
       return;
     }
     this.cloudSyncInFlight = true;
+    this.cloudLastPollAt = Date.now();
     const targetCode = this.cloudActiveRoomCode;
     const seqAtStart = this.cloudMutationSeq;
     try {
@@ -375,6 +412,7 @@ export class HybridGameClient {
           this.opts.onRoomExit?.('Власник кімнати вилучив вас зі столу');
           return;
         }
+        this.cloudLatestState = data.state;
         this.saveStateSnapshot(data.state);
         this.opts.onState(data.state);
       }
@@ -502,6 +540,8 @@ export class HybridGameClient {
               data.version
             );
           }
+          this.cloudLatestState = data.state;
+          this.cloudLastPollAt = Date.now();
           this.saveStateSnapshot(data.state);
           this.opts.onState(data.state);
           ack?.(data);

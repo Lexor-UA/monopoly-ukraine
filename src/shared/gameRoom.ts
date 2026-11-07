@@ -3682,7 +3682,62 @@ export class GameRoom {
     }
   }
 
+  private getBotArchetype(bot: Player): {
+    preferredSectors: string[];
+    sectorAffinityBonus: number;
+    auctionAggression: number;
+    minAuctionCushion: number;
+    branchReserve: number;
+  } {
+    const name = bot.name.toLowerCase();
+    if (bot.token === 'patron' || name.includes('лев')) {
+      return {
+        preferredSectors: ['fintech', 'ecommerce', 'telecom'],
+        sectorAffinityBonus: 1.28,
+        auctionAggression: 1.12,
+        minAuctionCushion: 400,
+        branchReserve: 1250,
+      };
+    }
+    if (bot.token === 'kashtan' || name.includes('леся')) {
+      return {
+        preferredSectors: ['coffee', 'retail', 'delivery'],
+        sectorAffinityBonus: 1.24,
+        auctionAggression: 1.06,
+        minAuctionCushion: 350,
+        branchReserve: 850,
+      };
+    }
+    if (bot.token === 'kozak' || name.includes('тарас')) {
+      return {
+        preferredSectors: ['fuel', 'ecommerce', 'delivery'],
+        sectorAffinityBonus: 1.2,
+        auctionAggression: 1.22,
+        minAuctionCushion: 250,
+        branchReserve: 1100,
+      };
+    }
+    if (bot.token === 'bulava' || name.includes('богдан')) {
+      return {
+        preferredSectors: ['transport', 'delivery', 'fuel'],
+        sectorAffinityBonus: 1.32,
+        auctionAggression: 1.1,
+        minAuctionCushion: 350,
+        branchReserve: 1150,
+      };
+    }
+    // Софія (AI) та інші
+    return {
+      preferredSectors: ['tech', 'utility', 'telecom'],
+      sectorAffinityBonus: 1.28,
+      auctionAggression: 1.08,
+      minAuctionCushion: 350,
+      branchReserve: 1050,
+    };
+  }
+
   private botManageUpgrades(bot: Player): void {
+    const archetype = this.getBotArchetype(bot);
     // 1. Unmortgage profitable assets (prioritize unlocking full sector monopolies!)
     for (const prop of Object.values(this.state.properties)) {
       if (prop.ownerId === bot.id && prop.isMortgaged) {
@@ -3698,23 +3753,29 @@ export class GameRoom {
               true
             )
         );
-        const minCushion = unlocksSectorMonopoly ? 1000 : 2200;
+        const minCushion = unlocksSectorMonopoly ? 900 : 2100;
         if (bot.money - cost >= minCushion) {
           this.unmortgageProperty(bot.id, prop.cellIndex);
         }
       }
     }
 
-    // 2. Build branches evenly while maintaining cash cushion
-    const reserve = 1200;
+    // 2. Build branches evenly while maintaining personality-specific cash cushion (prioritize preferred sectors first)
+    const reserve = archetype.branchReserve;
+    const sortedCompanyCells = BOARD_CELLS.filter(
+      (c) => c.type === 'company' && c.branchCost
+    ).sort((a, b) => {
+      const aPref = a.sector && archetype.preferredSectors.includes(a.sector) ? 1 : 0;
+      const bPref = b.sector && archetype.preferredSectors.includes(b.sector) ? 1 : 0;
+      return bPref - aPref;
+    });
     let builtAny = true;
     let safety = 0;
     while (builtAny && safety < 8) {
       builtAny = false;
       safety += 1;
-      for (const cell of BOARD_CELLS) {
+      for (const cell of sortedCompanyCells) {
         if (
-          cell.type === 'company' &&
           cell.branchCost &&
           bot.money - cell.branchCost >= reserve
         ) {
@@ -3858,7 +3919,15 @@ export class GameRoom {
   private evaluatePropertyForBot(bot: Player, cellIndex: number): number {
     const cell = BOARD_CELLS[cellIndex];
     if (!cell || !cell.price) return 0;
-    let value = cell.price * 0.95;
+    const archetype = this.getBotArchetype(bot);
+    const isPreferredSector = Boolean(
+      cell.sector && archetype.preferredSectors.includes(cell.sector)
+    );
+    let value =
+      cell.price *
+      0.95 *
+      archetype.auctionAggression *
+      (isPreferredSector ? archetype.sectorAffinityBonus : 1);
 
     if (cell.sector) {
       const sectorCells = getSectorCells(cell.sector);
@@ -3874,13 +3943,16 @@ export class GameRoom {
           : 0;
 
       if (botOwned === sectorCells.length - 1) {
-        value = cell.price * 1.45; // Completes bot's monopoly!
+        value = Math.max(value, cell.price * 1.48 * archetype.auctionAggression); // Completes bot's monopoly!
       } else if (allyOwned === sectorCells.length - 1) {
-        value = cell.price * 1.4; // Secures teammate's monopoly!
+        value = Math.max(value, cell.price * 1.42); // Secures teammate's monopoly!
       } else if (botOwned + allyOwned === sectorCells.length - 1) {
-        value = cell.price * 1.32; // Secures alliance sector for Smart-Trade union!
+        value = Math.max(value, cell.price * 1.35); // Secures alliance sector for Smart-Trade union!
       } else if (botOwned > 0 || allyOwned > 0) {
-        value = cell.price * 1.15;
+        value = Math.max(
+          value,
+          cell.price * 1.18 * (isPreferredSector ? 1.12 : 1)
+        );
       }
 
       // Check if an opposing player/alliance would complete monopoly with it
@@ -3899,13 +3971,19 @@ export class GameRoom {
                 this.state.properties[c.index]?.ownerId === otherTeammate.id)
           ).length;
           if (otherOwned === sectorCells.length - 1) {
-            value = Math.max(value, cell.price * 1.3);
+            value = Math.max(
+              value,
+              cell.price * 1.32 * archetype.auctionAggression
+            );
           }
         }
       }
     }
 
-    return Math.min(Math.floor(value), Math.max(0, bot.money - 400));
+    return Math.min(
+      Math.floor(value),
+      Math.max(0, bot.money - archetype.minAuctionCushion)
+    );
   }
 
   private scheduleBotTradeDecision(bot: Player, trade: TradeOffer): void {

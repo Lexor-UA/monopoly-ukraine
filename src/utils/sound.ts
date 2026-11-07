@@ -62,11 +62,23 @@ class SoundEngine {
     osc.stop(now + duration + 0.02);
   }
 
+  private vibrate(pattern: number | number[]): void {
+    if (!this.enabled || typeof navigator === 'undefined') return;
+    try {
+      if (typeof navigator.vibrate === 'function') {
+        navigator.vibrate(pattern);
+      }
+    } catch {
+      // Ignore on unsupported devices
+    }
+  }
+
   public playClick(): void {
     this.tone(680, 0.045, 0, 'triangle', 0.05);
   }
 
   public playDiceRoll(): void {
+    this.vibrate([18, 45, 25]);
     const ctx = this.getContext();
     if (!ctx) return;
 
@@ -179,6 +191,7 @@ class SoundEngine {
   }
 
   public playPurchase(): void {
+    this.vibrate([15, 30, 25]);
     // Crisp Monobank-inspired cashback chime
     this.tone(523.25, 0.12, 0, 'sine', 0.08);
     this.tone(659.25, 0.12, 0.07, 'sine', 0.08);
@@ -197,11 +210,13 @@ class SoundEngine {
   }
 
   public playAuctionBid(): void {
+    this.vibrate(14);
     this.tone(740, 0.07, 0, 'triangle', 0.07);
     this.tone(987, 0.09, 0.05, 'sine', 0.06);
   }
 
   public playYourTurn(): void {
+    this.vibrate([22, 40, 28]);
     // Gentle Diia push notification double chime
     this.tone(659.25, 0.14, 0, 'sine', 0.08);
     this.tone(987.77, 0.24, 0.11, 'sine', 0.09);
@@ -217,6 +232,7 @@ class SoundEngine {
   }
 
   public playVictory(): void {
+    this.vibrate([30, 50, 30, 50, 60]);
     const notes = [523.25, 659.25, 783.99, 1046.5, 1318.5];
     notes.forEach((n, idx) => {
       this.tone(n, 0.28, idx * 0.1, 'triangle', 0.09);
