@@ -17,6 +17,7 @@ import {
   VictoryModal,
 } from './components/Modals';
 import { MonopolyBoard } from './components/MonopolyBoard';
+import { ProfileModal } from './components/ProfileModal';
 import {
   ChatFeedContent,
   CompanyInspectorContent,
@@ -44,7 +45,14 @@ import {
   TeamId,
   ToastTransfer,
   TokenId,
+  UserProfile,
 } from './shared/types';
+import {
+  buildMatchRecordFromGameState,
+  loadStoredAuthSession,
+  recordCompletedMatch,
+  verifyStoredUserSession,
+} from './utils/authClient';
 import { HybridGameClient, TransportMode } from './utils/gameClient';
 import {
   releaseNativeMobileLandscape,
@@ -129,6 +137,13 @@ export const App: React.FC = () => {
   const [selectedCellIndex, setSelectedCellIndex] = useState<number>(39);
   const [hoveredSector, setHoveredSector] = useState<SectorId | null>(null);
   const [rulesOpen, setRulesOpen] = useState(false);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(
+    () => loadStoredAuthSession().profile
+  );
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [profileModalTab, setProfileModalTab] = useState<
+    'profile' | 'register' | 'login' | 'leaderboard' | 'settings'
+  >('profile');
   const [tradeModalOpen, setTradeModalOpen] = useState(false);
   const [tradePartnerId, setTradePartnerId] = useState<string | null>(null);
   const [recentReactions, setRecentReactions] = useState<
@@ -181,6 +196,77 @@ export const App: React.FC = () => {
   useEffect(() => {
     window.localStorage.setItem('magnat_token', selectedToken);
   }, [selectedToken]);
+
+  // Verify stored cloud profile session on mount
+  useEffect(() => {
+    let active = true;
+    void verifyStoredUserSession().then((fresh) => {
+      if (!active) return;
+      if (fresh) {
+        setUserProfile(fresh);
+        if (fresh.displayName) setPlayerName(fresh.displayName);
+        if (fresh.favoriteToken) setSelectedToken(fresh.favoriteToken);
+      } else {
+        setUserProfile(null);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Automatically record match statistics when a match finishes
+  useEffect(() => {
+    if (!gameState || gameState.status !== 'finished') return;
+    const matchRec = buildMatchRecordFromGameState(gameState, playerId);
+    if (!matchRec) return;
+    void recordCompletedMatch(matchRec).then((updatedProfile) => {
+      if (updatedProfile) {
+        setUserProfile(updatedProfile);
+      }
+    });
+  }, [
+    gameState?.status,
+    gameState?.roomCode,
+    gameState?.turnNumber,
+    gameState?.winnerId,
+    gameState?.winningTeamId,
+    playerId,
+    gameState,
+  ]);
+
+  const handleOpenProfile = (
+    tab: 'profile' | 'register' | 'login' | 'leaderboard' | 'settings' = 'profile'
+  ) => {
+    sound.playClick();
+    setProfileModalTab(tab);
+    setProfileModalOpen(true);
+  };
+
+  const handleAuthSuccess = (profile: UserProfile) => {
+    setUserProfile(profile);
+    if (profile.displayName) {
+      setPlayerName(profile.displayName);
+      if (gameState?.status === 'lobby') {
+        clientRef.current?.emit('game:update_name', {
+          name: profile.displayName,
+        });
+      }
+    }
+    if (profile.favoriteToken) {
+      setSelectedToken(profile.favoriteToken);
+      if (gameState?.status === 'lobby') {
+        clientRef.current?.emit('game:select_token', {
+          token: profile.favoriteToken,
+        });
+      }
+    }
+  };
+
+  const handleLogout = () => {
+    setUserProfile(null);
+    setProfileModalOpen(false);
+  };
 
   useEffect(() => {
     document.documentElement.setAttribute(
@@ -964,6 +1050,16 @@ export const App: React.FC = () => {
 
   return (
     <>
+      <ProfileModal
+        open={profileModalOpen}
+        initialTab={profileModalTab}
+        userProfile={userProfile}
+        currentPlayerName={playerName}
+        currentSelectedToken={selectedToken}
+        onClose={() => setProfileModalOpen(false)}
+        onAuthSuccess={handleAuthSuccess}
+        onLogout={handleLogout}
+      />
       {!isInBoardMatch ? (
         <>
           <RulesModal open={rulesOpen} onClose={() => setRulesOpen(false)} />
@@ -985,6 +1081,8 @@ export const App: React.FC = () => {
             darkMode={darkMode}
             onToggleDarkMode={() => setDarkMode((d) => !d)}
             onOpenRules={() => setRulesOpen(true)}
+            userProfile={userProfile}
+            onOpenProfile={handleOpenProfile}
             onQuickBots={handleQuickBots}
             onCreateRoom={handleCreateRoom}
             onJoinRoom={handleJoinRoom}
@@ -1433,6 +1531,10 @@ export const App: React.FC = () => {
           <VictoryModal
             gameState={gameState}
             myPlayerId={playerId}
+            userProfile={userProfile}
+            onOpenProfile={() =>
+              handleOpenProfile(userProfile ? 'profile' : 'register')
+            }
             onRematchLobby={() => emitWithAck('game:restart_lobby')}
             onExitHome={handleLeaveRoom}
           />

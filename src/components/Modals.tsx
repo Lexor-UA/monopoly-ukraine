@@ -29,7 +29,12 @@ import {
   getSectorCells,
   hasFullSectorMonopoly,
 } from '../shared/boardData';
-import { GameState, SectorId, ToastTransfer } from '../shared/types';
+import {
+  GameState,
+  SectorId,
+  ToastTransfer,
+  UserProfile,
+} from '../shared/types';
 import { sound } from '../utils/sound';
 import {
   BrandEmblem,
@@ -638,9 +643,18 @@ const VICTORY_COMPANY_SECTORS: SectorId[] = [
 export const VictoryModal: React.FC<{
   gameState: GameState;
   myPlayerId: string;
+  userProfile?: UserProfile | null;
+  onOpenProfile?: () => void;
   onRematchLobby: () => void;
   onExitHome: () => void;
-}> = ({ gameState, myPlayerId, onRematchLobby, onExitHome }) => {
+}> = ({
+  gameState,
+  myPlayerId,
+  userProfile,
+  onOpenProfile,
+  onRematchLobby,
+  onExitHome,
+}) => {
   const [minimized, setMinimized] = useState(false);
   const isFinished =
     gameState.status === 'finished' || gameState.phase === 'GAME_OVER';
@@ -1129,6 +1143,47 @@ export const VictoryModal: React.FC<{
               ))}
             </div>
           </div>
+
+          {/* Cloud Profile Sync Status or 1-Click Registration CTA */}
+          {onOpenProfile && (
+            <div className="pt-0.5">
+              {userProfile ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    sound.playClick();
+                    onOpenProfile();
+                  }}
+                  className="w-full px-3 py-2 rounded-2xl bg-emerald-500/14 hover:bg-emerald-500/22 border border-emerald-400/35 text-emerald-200 text-[10.5px] font-extrabold flex items-center justify-between gap-2 transition cursor-pointer"
+                >
+                  <span className="inline-flex items-center gap-1.5 truncate">
+                    <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span className="truncate">
+                      Статистику збережено у профіль @{userProfile.username} (🏆{' '}
+                      {userProfile.stats.wins})
+                    </span>
+                  </span>
+                  <span className="text-amber-300 shrink-0">Кабінет →</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    sound.playClick();
+                    onOpenProfile();
+                  }}
+                  className="w-full px-3 py-2 rounded-2xl bg-sky-500/15 hover:bg-sky-500/25 border border-sky-400/40 text-sky-200 text-[10.5px] font-extrabold flex items-center justify-between gap-2 transition cursor-pointer"
+                >
+                  <span className="truncate">
+                    💾 Збережіть цю гру та звання у власний онлайн-профіль!
+                  </span>
+                  <span className="px-2 py-0.5 rounded-lg bg-amber-400 text-slate-950 font-black text-[9.5px] shrink-0">
+                    Реєстрація →
+                  </span>
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* === 3. PINNED BOTTOM ACTION BAR (ALWAYS VISIBLE) === */}

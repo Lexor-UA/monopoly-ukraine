@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import type { Config, Context } from '@netlify/functions';
 import { getDatabase } from '@netlify/database';
 import { getStore } from '@netlify/blobs';
@@ -6,12 +7,23 @@ import { GameRoom } from '../../src/shared/gameRoom';
 import type {
   GameMode,
   GameState,
+  LeaderboardEntry,
+  PlayerMatchRecord,
   RoomSettings,
   RoomSummary,
   TeamId,
   TokenId,
-  TradeOffer,
+  UserProfile,
+  UserStats,
 } from '../../src/shared/types';
+import {
+  applyMatchToStats,
+  normalizeUserStats,
+  sanitizeTokenId,
+  toLeaderboardEntry,
+  validatePasswordInput,
+  validateUsernameInput,
+} from '../../src/shared/userProfileUtils';
 
 interface StoredRoomRecord {
   roomCode: string;
@@ -28,10 +40,45 @@ interface StoredRoomRecord {
   updatedAt: number;
 }
 
+interface StoredUserAccount {
+  userId: string;
+  usernameLower: string;
+  username: string;
+  passwordHash: string;
+  sessionToken: string;
+  profile: UserProfile;
+  updatedAt: number;
+}
+
 const memoryRooms = new Map<string, StoredRoomRecord>();
+const memoryUsersById = new Map<string, StoredUserAccount>();
+const memoryUserIdsByUsername = new Map<string, string>();
 const recentlyDeletedRooms = new Map<string, number>();
 let dbSchemaInitialized = false;
 let lastPruneAt = 0;
+
+function hashPassword(password: string): string {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const derived = crypto.scryptSync(password, salt, 64).toString('hex');
+  return `${salt}:${derived}`;
+}
+
+function verifyPassword(password: string, storedHash: string): boolean {
+  const [salt, keyHex] = String(storedHash || '').split(':');
+  if (!salt || !keyHex) return false;
+  try {
+    const keyBuf = Buffer.from(keyHex, 'hex');
+    const derivedBuf = crypto.scryptSync(password, salt, 64);
+    if (keyBuf.length !== derivedBuf.length) return false;
+    return crypto.timingSafeEqual(keyBuf, derivedBuf);
+  } catch {
+    return false;
+  }
+}
+
+function generateSessionToken(): string {
+  return crypto.randomBytes(28).toString('hex');
+}
 
 async function getSqlClient() {
   if (!process.env.NETLIFY_DB_URL && !process.env.DATABASE_URL) {
@@ -56,6 +103,19 @@ async function getSqlClient() {
           updated_at BIGINT NOT NULL
         )
       `;
+      await sql`
+        CREATE TABLE IF NOT EXISTS magnat_users (
+          user_id TEXT PRIMARY KEY,
+          username_lower TEXT UNIQUE NOT NULL,
+          username TEXT NOT NULL,
+          password_hash TEXT NOT NULL,
+          session_token TEXT NOT NULL,
+          profile_json JSONB NOT NULL,
+          wins INTEGER NOT NULL DEFAULT 0,
+          best_net_worth BIGINT NOT NULL DEFAULT 0,
+          updated_at BIGINT NOT NULL
+        )
+      `;
       dbSchemaInitialized = true;
     }
     return sql;
@@ -70,6 +130,274 @@ function getBlobsRoomStore() {
   } catch {
     return null;
   }
+}
+
+function getBlobsUserStore() {
+  try {
+    return getStore({ name: 'magnat-users', consistency: 'strong' });
+  } catch {
+    return null;
+  }
+}
+
+async function loadUserByUsername(
+  usernameLower: string
+): Promise<StoredUserAccount | null> {
+  const key = usernameLower.trim().toLowerCase();
+  if (!key) return null;
+
+  const sql = await getSqlClient();
+  if (sql) {
+    try {
+      const rows = await sql`
+        SELECT
+          user_id,
+          username_lower,
+          username,
+          password_hash,
+          session_token,
+          profile_json,
+          updated_at
+        FROM magnat_users
+        WHERE username_lower = ${key}
+        LIMIT 1
+      `;
+      if (rows && rows.length > 0) {
+        const row = rows[0] as Record<string, unknown>;
+        const profile =
+          typeof row.profile_json === 'string'
+            ? (JSON.parse(row.profile_json) as UserProfile)
+            : (row.profile_json as UserProfile);
+        if (profile && profile.id) {
+          profile.stats = normalizeUserStats(profile.stats);
+          const acc: StoredUserAccount = {
+            userId: String(row.user_id),
+            usernameLower: String(row.username_lower),
+            username: String(row.username),
+            passwordHash: String(row.password_hash),
+            sessionToken: String(row.session_token),
+            profile,
+            updatedAt: Number(row.updated_at) || Date.now(),
+          };
+          memoryUsersById.set(acc.userId, acc);
+          memoryUserIdsByUsername.set(acc.usernameLower, acc.userId);
+          return acc;
+        }
+      }
+    } catch {
+      // Fall through
+    }
+  }
+
+  const blobStore = getBlobsUserStore();
+  if (blobStore) {
+    try {
+      const acc = (await blobStore.get(`uname:${key}`, {
+        type: 'json',
+      })) as StoredUserAccount | null;
+      if (acc && acc.profile) {
+        acc.profile.stats = normalizeUserStats(acc.profile.stats);
+        memoryUsersById.set(acc.userId, acc);
+        memoryUserIdsByUsername.set(acc.usernameLower, acc.userId);
+        return acc;
+      }
+    } catch {
+      // Fall through
+    }
+  }
+
+  const memId = memoryUserIdsByUsername.get(key);
+  return memId ? (memoryUsersById.get(memId) ?? null) : null;
+}
+
+async function loadUserById(userId: string): Promise<StoredUserAccount | null> {
+  const id = userId.trim();
+  if (!id) return null;
+
+  const sql = await getSqlClient();
+  if (sql) {
+    try {
+      const rows = await sql`
+        SELECT
+          user_id,
+          username_lower,
+          username,
+          password_hash,
+          session_token,
+          profile_json,
+          updated_at
+        FROM magnat_users
+        WHERE user_id = ${id}
+        LIMIT 1
+      `;
+      if (rows && rows.length > 0) {
+        const row = rows[0] as Record<string, unknown>;
+        const profile =
+          typeof row.profile_json === 'string'
+            ? (JSON.parse(row.profile_json) as UserProfile)
+            : (row.profile_json as UserProfile);
+        if (profile && profile.id) {
+          profile.stats = normalizeUserStats(profile.stats);
+          const acc: StoredUserAccount = {
+            userId: String(row.user_id),
+            usernameLower: String(row.username_lower),
+            username: String(row.username),
+            passwordHash: String(row.password_hash),
+            sessionToken: String(row.session_token),
+            profile,
+            updatedAt: Number(row.updated_at) || Date.now(),
+          };
+          memoryUsersById.set(acc.userId, acc);
+          memoryUserIdsByUsername.set(acc.usernameLower, acc.userId);
+          return acc;
+        }
+      }
+    } catch {
+      // Fall through
+    }
+  }
+
+  const blobStore = getBlobsUserStore();
+  if (blobStore) {
+    try {
+      const acc = (await blobStore.get(`uid:${id}`, {
+        type: 'json',
+      })) as StoredUserAccount | null;
+      if (acc && acc.profile) {
+        acc.profile.stats = normalizeUserStats(acc.profile.stats);
+        memoryUsersById.set(acc.userId, acc);
+        memoryUserIdsByUsername.set(acc.usernameLower, acc.userId);
+        return acc;
+      }
+    } catch {
+      // Fall through
+    }
+  }
+
+  return memoryUsersById.get(id) ?? null;
+}
+
+async function saveUserAccount(acc: StoredUserAccount): Promise<void> {
+  acc.updatedAt = Date.now();
+  acc.profile.updatedAt = acc.updatedAt;
+  memoryUsersById.set(acc.userId, acc);
+  memoryUserIdsByUsername.set(acc.usernameLower, acc.userId);
+
+  const sql = await getSqlClient();
+  if (sql) {
+    try {
+      const profileJson = JSON.stringify(acc.profile);
+      await sql`
+        INSERT INTO magnat_users (
+          user_id,
+          username_lower,
+          username,
+          password_hash,
+          session_token,
+          profile_json,
+          wins,
+          best_net_worth,
+          updated_at
+        ) VALUES (
+          ${acc.userId},
+          ${acc.usernameLower},
+          ${acc.username},
+          ${acc.passwordHash},
+          ${acc.sessionToken},
+          ${profileJson}::jsonb,
+          ${acc.profile.stats.wins},
+          ${acc.profile.stats.bestNetWorth},
+          ${acc.updatedAt}
+        )
+        ON CONFLICT (user_id) DO UPDATE SET
+          username_lower = EXCLUDED.username_lower,
+          username = EXCLUDED.username,
+          password_hash = EXCLUDED.password_hash,
+          session_token = EXCLUDED.session_token,
+          profile_json = EXCLUDED.profile_json,
+          wins = EXCLUDED.wins,
+          best_net_worth = EXCLUDED.best_net_worth,
+          updated_at = EXCLUDED.updated_at
+      `;
+    } catch {
+      // Fall through to Blobs
+    }
+  }
+
+  const blobStore = getBlobsUserStore();
+  if (blobStore) {
+    try {
+      await blobStore.setJSON(`uid:${acc.userId}`, acc);
+      await blobStore.setJSON(`uname:${acc.usernameLower}`, acc);
+    } catch {
+      // Stored in memory
+    }
+  }
+}
+
+async function listTopMagnates(): Promise<LeaderboardEntry[]> {
+  const sql = await getSqlClient();
+  if (sql) {
+    try {
+      const rows = await sql`
+        SELECT profile_json
+        FROM magnat_users
+        ORDER BY wins DESC, best_net_worth DESC, updated_at DESC
+        LIMIT 15
+      `;
+      const entries: LeaderboardEntry[] = [];
+      for (const row of rows as Array<Record<string, unknown>>) {
+        const profile =
+          typeof row.profile_json === 'string'
+            ? (JSON.parse(row.profile_json) as UserProfile)
+            : (row.profile_json as UserProfile);
+        if (profile && profile.id) {
+          profile.stats = normalizeUserStats(profile.stats);
+          entries.push(toLeaderboardEntry(profile));
+        }
+      }
+      return entries;
+    } catch {
+      // Fall through
+    }
+  }
+
+  const blobStore = getBlobsUserStore();
+  if (blobStore) {
+    try {
+      const { blobs } = await blobStore.list({ prefix: 'uid:' });
+      const entries: LeaderboardEntry[] = [];
+      for (const b of blobs.slice(0, 30)) {
+        const acc = (await blobStore.get(b.key, {
+          type: 'json',
+        })) as StoredUserAccount | null;
+        if (acc?.profile) {
+          acc.profile.stats = normalizeUserStats(acc.profile.stats);
+          entries.push(toLeaderboardEntry(acc.profile));
+        }
+      }
+      entries.sort(
+        (a, b) =>
+          b.wins - a.wins ||
+          b.bestNetWorth - a.bestNetWorth ||
+          b.matchesPlayed - a.matchesPlayed
+      );
+      return entries.slice(0, 15);
+    } catch {
+      // Fall through
+    }
+  }
+
+  const list = Array.from(memoryUsersById.values()).map((acc) =>
+    toLeaderboardEntry(acc.profile)
+  );
+  list.sort(
+    (a, b) =>
+      b.wins - a.wins ||
+      b.bestNetWorth - a.bestNetWorth ||
+      b.matchesPlayed - a.matchesPlayed
+  );
+  return list.slice(0, 15);
 }
 
 function buildRecordFromRoom(
@@ -487,6 +815,187 @@ export default async (req: Request, _context: Context) => {
       void pruneExpiredRoomsIfNeeded();
       const rooms = await listPublicRooms();
       return Response.json({ ok: true, rooms });
+    }
+
+    if (action === 'auth:leaderboard') {
+      const leaderboard = await listTopMagnates();
+      return Response.json({ ok: true, leaderboard });
+    }
+
+    if (action === 'auth:register') {
+      const unameCheck = validateUsernameInput(String(body.username || ''));
+      if (!unameCheck.ok) {
+        return Response.json({ ok: false, error: unameCheck.error });
+      }
+      const pwdCheck = validatePasswordInput(String(body.password || ''));
+      if (!pwdCheck.ok) {
+        return Response.json({ ok: false, error: pwdCheck.error });
+      }
+
+      const existing = await loadUserByUsername(unameCheck.lower);
+      if (existing) {
+        return Response.json({
+          ok: false,
+          error: `Користувач «${unameCheck.cleaned}» вже зареєстрований. Увійдіть у свій акаунт або оберіть інший логін.`,
+        });
+      }
+
+      const now = Date.now();
+      const userId = `u_${crypto.randomBytes(8).toString('hex')}`;
+      const displayName =
+        String(body.displayName || unameCheck.cleaned)
+          .trim()
+          .slice(0, 22) || unameCheck.cleaned.slice(0, 22);
+      const favoriteToken = sanitizeTokenId(body.favoriteToken);
+      const motto = String(body.motto || 'Будую українську бізнес-імперію!')
+        .trim()
+        .slice(0, 80);
+      const initialStats = normalizeUserStats(
+        body.initialStats as Partial<UserStats> | undefined
+      );
+      const sessionToken = generateSessionToken();
+
+      const profile: UserProfile = {
+        id: userId,
+        username: unameCheck.cleaned,
+        displayName,
+        favoriteToken,
+        motto,
+        createdAt: now,
+        updatedAt: now,
+        stats: initialStats,
+      };
+
+      const account: StoredUserAccount = {
+        userId,
+        usernameLower: unameCheck.lower,
+        username: unameCheck.cleaned,
+        passwordHash: hashPassword(String(body.password)),
+        sessionToken,
+        profile,
+        updatedAt: now,
+      };
+
+      await saveUserAccount(account);
+      return Response.json({
+        ok: true,
+        profile: account.profile,
+        authToken: account.sessionToken,
+      });
+    }
+
+    if (action === 'auth:login') {
+      const unameCheck = validateUsernameInput(String(body.username || ''));
+      if (!unameCheck.ok) {
+        return Response.json({
+          ok: false,
+          error: 'Введіть коректний логін або Email',
+        });
+      }
+      const password = String(body.password || '');
+      const account = await loadUserByUsername(unameCheck.lower);
+      if (!account || !verifyPassword(password, account.passwordHash)) {
+        return Response.json({
+          ok: false,
+          error: 'Невірний логін або пароль',
+        });
+      }
+
+      if (!account.sessionToken) {
+        account.sessionToken = generateSessionToken();
+        await saveUserAccount(account);
+      }
+
+      return Response.json({
+        ok: true,
+        profile: account.profile,
+        authToken: account.sessionToken,
+      });
+    }
+
+    if (action === 'auth:me') {
+      const userId = String(body.userId || '').trim();
+      const authToken = String(body.authToken || '').trim();
+      if (!userId || !authToken) {
+        return Response.json({ ok: false, error: 'Немає активної сесії' });
+      }
+      const account = await loadUserById(userId);
+      if (!account || account.sessionToken !== authToken) {
+        return Response.json({
+          ok: false,
+          expired: true,
+          error: 'Сесія застаріла, увійдіть повторно',
+        });
+      }
+      return Response.json({
+        ok: true,
+        profile: account.profile,
+      });
+    }
+
+    if (action === 'auth:update_profile') {
+      const userId = String(body.userId || '').trim();
+      const authToken = String(body.authToken || '').trim();
+      const account = await loadUserById(userId);
+      if (!account || account.sessionToken !== authToken) {
+        return Response.json({
+          ok: false,
+          error: 'Не вдалося підтвердити сесію профілю',
+        });
+      }
+
+      if (typeof body.displayName === 'string') {
+        const nextName = body.displayName.trim().slice(0, 22);
+        if (nextName.length >= 2) {
+          account.profile.displayName = nextName;
+        }
+      }
+      if (body.favoriteToken) {
+        account.profile.favoriteToken = sanitizeTokenId(body.favoriteToken);
+      }
+      if (typeof body.motto === 'string') {
+        account.profile.motto = body.motto.trim().slice(0, 80);
+      }
+
+      if (body.newPassword) {
+        const pwdCheck = validatePasswordInput(String(body.newPassword));
+        if (!pwdCheck.ok) {
+          return Response.json({ ok: false, error: pwdCheck.error });
+        }
+        account.passwordHash = hashPassword(String(body.newPassword));
+        account.sessionToken = generateSessionToken();
+      }
+
+      await saveUserAccount(account);
+      return Response.json({
+        ok: true,
+        profile: account.profile,
+        authToken: account.sessionToken,
+      });
+    }
+
+    if (action === 'auth:record_match') {
+      const userId = String(body.userId || '').trim();
+      const authToken = String(body.authToken || '').trim();
+      const match = body.match as PlayerMatchRecord | undefined;
+      if (!userId || !authToken || !match || !match.id) {
+        return Response.json({ ok: false, error: 'Некоректні дані матчу' });
+      }
+      const account = await loadUserById(userId);
+      if (!account || account.sessionToken !== authToken) {
+        return Response.json({ ok: false, error: 'Сесія недійсна' });
+      }
+
+      const { stats, added } = applyMatchToStats(account.profile.stats, match);
+      account.profile.stats = stats;
+      if (added) {
+        await saveUserAccount(account);
+      }
+      return Response.json({
+        ok: true,
+        added,
+        profile: account.profile,
+      });
     }
 
     if (action === 'room:quick_bots') {
@@ -975,5 +1484,5 @@ export default async (req: Request, _context: Context) => {
 };
 
 export const config: Config = {
-  path: ['/api/health', '/api/cloud-room'],
+  path: ['/api/health', '/api/cloud-room', '/api/auth'],
 };

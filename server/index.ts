@@ -1,4 +1,5 @@
 import cors from 'cors';
+import crypto from 'crypto';
 import express from 'express';
 import fs from 'fs';
 import { createServer } from 'http';
@@ -10,10 +11,21 @@ import { MAX_GAME_PLAYERS, parseRoomCodeInput } from '../src/shared/boardData.ts
 import {
   GameMode,
   GameState,
+  PlayerMatchRecord,
   RoomSettings,
   TeamId,
   TokenId,
+  UserProfile,
+  UserStats,
 } from '../src/shared/types.ts';
+import {
+  applyMatchToStats,
+  normalizeUserStats,
+  sanitizeTokenId,
+  toLeaderboardEntry,
+  validatePasswordInput,
+  validateUsernameInput,
+} from '../src/shared/userProfileUtils.ts';
 import { GameRoom } from './gameRoom.ts';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -268,6 +280,266 @@ app.get('/api/health', (_req, res) => {
     lanIps: getLocalLanIps(),
   });
 });
+
+interface LocalUserAccount {
+  userId: string;
+  usernameLower: string;
+  username: string;
+  passwordHash: string;
+  sessionToken: string;
+  profile: UserProfile;
+  updatedAt: number;
+}
+
+const SERVER_USERS_PATH = path.join(os.tmpdir(), 'magnat-ua-users-v1.json');
+const localUsersById = new Map<string, LocalUserAccount>();
+const localUserIdsByUsername = new Map<string, string>();
+
+function hashPasswordLocal(password: string): string {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const derived = crypto.scryptSync(password, salt, 64).toString('hex');
+  return `${salt}:${derived}`;
+}
+
+function verifyPasswordLocal(password: string, storedHash: string): boolean {
+  const [salt, keyHex] = String(storedHash || '').split(':');
+  if (!salt || !keyHex) return false;
+  try {
+    const keyBuf = Buffer.from(keyHex, 'hex');
+    const derivedBuf = crypto.scryptSync(password, salt, 64);
+    if (keyBuf.length !== derivedBuf.length) return false;
+    return crypto.timingSafeEqual(keyBuf, derivedBuf);
+  } catch {
+    return false;
+  }
+}
+
+function persistLocalUsersSync(): void {
+  try {
+    const users = Array.from(localUsersById.values());
+    fs.writeFileSync(
+      SERVER_USERS_PATH,
+      JSON.stringify({ savedAt: Date.now(), users }),
+      'utf8'
+    );
+  } catch {
+    // Ignore write errors
+  }
+}
+
+function restoreLocalUsersOnBoot(): void {
+  try {
+    if (!fs.existsSync(SERVER_USERS_PATH)) return;
+    const raw = fs.readFileSync(SERVER_USERS_PATH, 'utf8');
+    const parsed = JSON.parse(raw) as { users?: LocalUserAccount[] };
+    if (!parsed || !Array.isArray(parsed.users)) return;
+    for (const acc of parsed.users) {
+      if (acc && acc.userId && acc.usernameLower && acc.profile) {
+        acc.profile.stats = normalizeUserStats(acc.profile.stats);
+        localUsersById.set(acc.userId, acc);
+        localUserIdsByUsername.set(acc.usernameLower, acc.userId);
+      }
+    }
+  } catch {
+    // Ignore
+  }
+}
+
+restoreLocalUsersOnBoot();
+
+const handleAuthApiRequest: express.RequestHandler = (req, res) => {
+  const body = (req.body || {}) as Record<string, unknown>;
+  const action = String(body.action || '');
+
+  if (action === 'auth:leaderboard') {
+    const leaderboard = Array.from(localUsersById.values())
+      .map((acc) => toLeaderboardEntry(acc.profile))
+      .sort(
+        (a, b) =>
+          b.wins - a.wins ||
+          b.bestNetWorth - a.bestNetWorth ||
+          b.matchesPlayed - a.matchesPlayed
+      )
+      .slice(0, 15);
+    res.json({ ok: true, leaderboard });
+    return;
+  }
+
+  if (action === 'auth:register') {
+    const unameCheck = validateUsernameInput(String(body.username || ''));
+    if (!unameCheck.ok) {
+      res.json({ ok: false, error: unameCheck.error });
+      return;
+    }
+    const pwdCheck = validatePasswordInput(String(body.password || ''));
+    if (!pwdCheck.ok) {
+      res.json({ ok: false, error: pwdCheck.error });
+      return;
+    }
+    if (localUserIdsByUsername.has(unameCheck.lower)) {
+      res.json({
+        ok: false,
+        error: `Користувач «${unameCheck.cleaned}» вже зареєстрований. Увійдіть у свій акаунт або оберіть інший логін.`,
+      });
+      return;
+    }
+
+    const now = Date.now();
+    const userId = `u_${crypto.randomBytes(8).toString('hex')}`;
+    const displayName =
+      String(body.displayName || unameCheck.cleaned)
+        .trim()
+        .slice(0, 22) || unameCheck.cleaned.slice(0, 22);
+    const favoriteToken = sanitizeTokenId(body.favoriteToken);
+    const motto = String(body.motto || 'Будую українську бізнес-імперію!')
+      .trim()
+      .slice(0, 80);
+    const initialStats = normalizeUserStats(
+      body.initialStats as Partial<UserStats> | undefined
+    );
+    const sessionToken = crypto.randomBytes(28).toString('hex');
+
+    const profile: UserProfile = {
+      id: userId,
+      username: unameCheck.cleaned,
+      displayName,
+      favoriteToken,
+      motto,
+      createdAt: now,
+      updatedAt: now,
+      stats: initialStats,
+    };
+
+    const account: LocalUserAccount = {
+      userId,
+      usernameLower: unameCheck.lower,
+      username: unameCheck.cleaned,
+      passwordHash: hashPasswordLocal(String(body.password)),
+      sessionToken,
+      profile,
+      updatedAt: now,
+    };
+
+    localUsersById.set(userId, account);
+    localUserIdsByUsername.set(unameCheck.lower, userId);
+    persistLocalUsersSync();
+
+    res.json({
+      ok: true,
+      profile: account.profile,
+      authToken: account.sessionToken,
+    });
+    return;
+  }
+
+  if (action === 'auth:login') {
+    const unameCheck = validateUsernameInput(String(body.username || ''));
+    if (!unameCheck.ok) {
+      res.json({ ok: false, error: 'Введіть коректний логін або Email' });
+      return;
+    }
+    const uid = localUserIdsByUsername.get(unameCheck.lower);
+    const account = uid ? localUsersById.get(uid) : undefined;
+    if (
+      !account ||
+      !verifyPasswordLocal(String(body.password || ''), account.passwordHash)
+    ) {
+      res.json({ ok: false, error: 'Невірний логін або пароль' });
+      return;
+    }
+    if (!account.sessionToken) {
+      account.sessionToken = crypto.randomBytes(28).toString('hex');
+      persistLocalUsersSync();
+    }
+    res.json({
+      ok: true,
+      profile: account.profile,
+      authToken: account.sessionToken,
+    });
+    return;
+  }
+
+  if (action === 'auth:me') {
+    const userId = String(body.userId || '').trim();
+    const authToken = String(body.authToken || '').trim();
+    const account = localUsersById.get(userId);
+    if (!account || account.sessionToken !== authToken) {
+      res.json({
+        ok: false,
+        expired: true,
+        error: 'Сесія застаріла, увійдіть повторно',
+      });
+      return;
+    }
+    res.json({ ok: true, profile: account.profile });
+    return;
+  }
+
+  if (action === 'auth:update_profile') {
+    const userId = String(body.userId || '').trim();
+    const authToken = String(body.authToken || '').trim();
+    const account = localUsersById.get(userId);
+    if (!account || account.sessionToken !== authToken) {
+      res.json({ ok: false, error: 'Не вдалося підтвердити сесію профілю' });
+      return;
+    }
+    if (typeof body.displayName === 'string') {
+      const nextName = body.displayName.trim().slice(0, 22);
+      if (nextName.length >= 2) {
+        account.profile.displayName = nextName;
+      }
+    }
+    if (body.favoriteToken) {
+      account.profile.favoriteToken = sanitizeTokenId(body.favoriteToken);
+    }
+    if (typeof body.motto === 'string') {
+      account.profile.motto = body.motto.trim().slice(0, 80);
+    }
+    if (body.newPassword) {
+      const pwdCheck = validatePasswordInput(String(body.newPassword));
+      if (!pwdCheck.ok) {
+        res.json({ ok: false, error: pwdCheck.error });
+        return;
+      }
+      account.passwordHash = hashPasswordLocal(String(body.newPassword));
+      account.sessionToken = crypto.randomBytes(28).toString('hex');
+    }
+    account.updatedAt = Date.now();
+    account.profile.updatedAt = account.updatedAt;
+    persistLocalUsersSync();
+    res.json({
+      ok: true,
+      profile: account.profile,
+      authToken: account.sessionToken,
+    });
+    return;
+  }
+
+  if (action === 'auth:record_match') {
+    const userId = String(body.userId || '').trim();
+    const authToken = String(body.authToken || '').trim();
+    const match = body.match as PlayerMatchRecord | undefined;
+    const account = localUsersById.get(userId);
+    if (!account || account.sessionToken !== authToken || !match?.id) {
+      res.json({ ok: false, error: 'Сесія або дані матчу недійсні' });
+      return;
+    }
+    const { stats, added } = applyMatchToStats(account.profile.stats, match);
+    account.profile.stats = stats;
+    account.updatedAt = Date.now();
+    account.profile.updatedAt = account.updatedAt;
+    if (added) {
+      persistLocalUsersSync();
+    }
+    res.json({ ok: true, added, profile: account.profile });
+    return;
+  }
+
+  res.status(400).json({ ok: false, error: `Невідома дія: ${action}` });
+};
+
+app.post('/api/auth', handleAuthApiRequest);
+app.post('/api/cloud-room', handleAuthApiRequest);
 
 io.on('connection', (socket: Socket) => {
   socket.emit('lobby:rooms', getPublicRoomSummaries());

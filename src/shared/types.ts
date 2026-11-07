@@ -262,3 +262,54 @@ export interface RoomSummary {
   turnTimeSeconds: number;
 }
 
+export interface PlayerMatchRecord {
+  id: string;
+  roomCode: string;
+  gameMode: GameMode;
+  finishedAt: number;
+  won: boolean;
+  place: number;
+  totalPlayers: number;
+  netWorth: number;
+  zsuDonated: number;
+  monopoliesCount: number;
+  token: TokenId;
+}
+
+export interface UserStats {
+  matchesPlayed: number;
+  wins: number;
+  teamWins: number;
+  bestNetWorth: number;
+  totalNetWorthAccumulated: number;
+  totalZsuDonated: number;
+  totalMonopoliesCollected: number;
+  currentWinStreak: number;
+  bestWinStreak: number;
+  recentMatches: PlayerMatchRecord[];
+}
+
+export interface UserProfile {
+  id: string;
+  username: string;
+  displayName: string;
+  favoriteToken: TokenId;
+  motto: string;
+  createdAt: number;
+  updatedAt: number;
+  stats: UserStats;
+}
+
+export interface LeaderboardEntry {
+  userId: string;
+  username: string;
+  displayName: string;
+  favoriteToken: TokenId;
+  motto: string;
+  wins: number;
+  matchesPlayed: number;
+  bestNetWorth: number;
+  totalZsuDonated: number;
+}
+
+

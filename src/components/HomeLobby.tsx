@@ -24,6 +24,8 @@ import {
   Sparkles,
   Sun,
   Trophy,
+  UserCheck,
+  UserPlus,
   Users,
   Volume2,
   VolumeX,
@@ -47,7 +49,9 @@ import {
   RoomSummary,
   TeamId,
   TokenId,
+  UserProfile,
 } from '../shared/types';
+import { getMagnateRank } from '../shared/userProfileUtils';
 import { TransportMode } from '../utils/gameClient';
 import {
   BrandEmblem,
@@ -76,6 +80,10 @@ interface HomeLobbyProps {
   darkMode: boolean;
   onToggleDarkMode: () => void;
   onOpenRules: () => void;
+  userProfile: UserProfile | null;
+  onOpenProfile: (
+    tab?: 'profile' | 'register' | 'login' | 'leaderboard' | 'settings'
+  ) => void;
   onQuickBots: (botCount: number, gameMode?: GameMode) => void;
   onCreateRoom: (settings: Partial<RoomSettings>) => void;
   onJoinRoom: (roomCode: string) => void;
@@ -109,6 +117,8 @@ export const HomeLobby: React.FC<HomeLobbyProps> = ({
   darkMode,
   onToggleDarkMode,
   onOpenRules,
+  userProfile,
+  onOpenProfile,
   onQuickBots,
   onCreateRoom,
   onJoinRoom,
@@ -247,6 +257,43 @@ export const HomeLobby: React.FC<HomeLobbyProps> = ({
                     : 'Онлайн • Сервер активний'
                 : 'Підключення...'}
             </div>
+
+            <button
+              onClick={() =>
+                onOpenProfile(userProfile ? 'profile' : 'register')
+              }
+              title={
+                userProfile
+                  ? `Особистий кабінет магната (${userProfile.displayName})`
+                  : 'Реєстрація та вхід у профіль гравця'
+              }
+              className={`h-9 sm:h-10 px-2.5 sm:px-3.5 rounded-xl border shadow-2xs text-xs font-extrabold inline-flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                userProfile
+                  ? 'bg-amber-400/15 hover:bg-amber-400/25 border-amber-400/50 text-amber-800 dark:text-amber-200'
+                  : 'bg-blue-600 hover:bg-blue-700 border-blue-500 text-white'
+              }`}
+            >
+              {userProfile ? (
+                <>
+                  <TokenAvatar
+                    token={userProfile.favoriteToken}
+                    color={activeTokenDef.defaultColor}
+                    size={22}
+                  />
+                  <span className="max-w-[96px] sm:max-w-[130px] truncate">
+                    {userProfile.displayName}
+                  </span>
+                  <span className="px-1.5 py-0.5 rounded-full bg-amber-400 text-slate-950 text-[10px] font-black tabular-nums">
+                    🏆 {userProfile.stats.wins}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <UserPlus className="w-3.5 h-3.5 shrink-0" />
+                  <span>Профіль / Вхід</span>
+                </>
+              )}
+            </button>
 
             <button
               onClick={onOpenRules}
@@ -1132,6 +1179,127 @@ export const HomeLobby: React.FC<HomeLobbyProps> = ({
                     </div>
                   </div>
                 </div>
+              </div>
+
+              {/* MAGNATE PROFILE & CAREER BAR (Logged-In Stats or 1-Click Registration CTA) */}
+              <div className="pt-2 border-t border-[var(--border-glass)]">
+                {userProfile ? (
+                  (() => {
+                    const rank = getMagnateRank(userProfile.stats);
+                    const wr =
+                      userProfile.stats.matchesPlayed > 0
+                        ? Math.round(
+                            (userProfile.stats.wins /
+                              userProfile.stats.matchesPlayed) *
+                              100
+                          )
+                        : 0;
+                    return (
+                      <div className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/12 via-blue-600/8 to-transparent border border-amber-400/35 flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className="w-9 h-9 rounded-xl bg-amber-400/20 border border-amber-400/45 flex items-center justify-center text-base shrink-0">
+                            {rank.badge}
+                          </span>
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span className="font-display font-extrabold text-xs sm:text-sm">
+                                {userProfile.displayName}
+                              </span>
+                              <span className="px-2 py-0.5 rounded-full bg-amber-400/20 border border-amber-400/40 text-amber-800 dark:text-amber-200 text-[10px] font-extrabold">
+                                {rank.title}
+                              </span>
+                              <span className="px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-[9.5px] font-bold inline-flex items-center gap-0.5">
+                                <UserCheck className="w-3 h-3" /> Хмара
+                              </span>
+                            </div>
+                            <div className="text-[11px] font-semibold text-[var(--text-secondary)] mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5">
+                              <span>
+                                🏆 Перемог:{' '}
+                                <strong className="text-[var(--text-primary)]">
+                                  {userProfile.stats.wins}
+                                </strong>
+                              </span>
+                              <span>
+                                🎲 Матчів:{' '}
+                                <strong className="text-[var(--text-primary)]">
+                                  {userProfile.stats.matchesPlayed}
+                                </strong>{' '}
+                                ({wr}%)
+                              </span>
+                              <span>
+                                💰 Рекорд:{' '}
+                                <strong className="text-emerald-600 dark:text-emerald-400">
+                                  {formatMoney(userProfile.stats.bestNetWorth)}
+                                </strong>
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => onOpenProfile('leaderboard')}
+                            className="px-3 py-2 rounded-xl bg-[var(--surface-solid)] border border-[var(--border-strong)] hover:border-amber-400 text-xs font-extrabold inline-flex items-center gap-1.5 transition cursor-pointer"
+                          >
+                            <Trophy className="w-3.5 h-3.5 text-amber-500" />
+                            <span>Рейтинг</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onOpenProfile('profile')}
+                            className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold inline-flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+                          >
+                            <span>Кабінет Магната →</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()
+                ) : (
+                  <div className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-blue-600/10 via-amber-400/10 to-transparent border border-blue-500/25 flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-9 h-9 rounded-xl bg-blue-600/15 border border-blue-500/35 flex items-center justify-center text-blue-600 dark:text-sky-300 shrink-0">
+                        <Crown className="w-4.5 h-4.5 text-amber-500" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-display font-extrabold text-xs sm:text-sm">
+                          Персональний Профіль та Кар’єра Магната
+                        </div>
+                        <p className="text-[11px] font-semibold text-[var(--text-secondary)] leading-snug">
+                          Зареєструйте акаунт за 10 секунд — зберігайте перемоги,
+                          звання, рекорди капіталу та донати на ЗСУ!
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => onOpenProfile('leaderboard')}
+                        className="px-3 py-2 rounded-xl bg-[var(--surface-solid)] border border-[var(--border-strong)] hover:border-amber-400 text-xs font-extrabold inline-flex items-center gap-1.5 transition cursor-pointer"
+                      >
+                        <Trophy className="w-3.5 h-3.5 text-amber-500" />
+                        <span>Рейтинг</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onOpenProfile('login')}
+                        className="px-3 py-2 rounded-xl bg-[var(--surface-solid)] border border-[var(--border-strong)] hover:border-blue-500 text-xs font-extrabold transition cursor-pointer"
+                      >
+                        Увійти
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onOpenProfile('register')}
+                        className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold inline-flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+                      >
+                        <UserPlus className="w-3.5 h-3.5" />
+                        <span>Реєстрація</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </motion.div>
 
