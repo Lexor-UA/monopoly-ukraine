@@ -29,6 +29,7 @@ interface StoredRoomRecord {
 }
 
 const memoryRooms = new Map<string, StoredRoomRecord>();
+const recentlyDeletedRooms = new Map<string, number>();
 let dbSchemaInitialized = false;
 let lastPruneAt = 0;
 
@@ -75,7 +76,10 @@ function buildRecordFromRoom(
   room: GameRoom,
   prevVersion = 0
 ): StoredRoomRecord {
+  const now = Date.now();
   const state = room.state;
+  state.serverTime = now;
+  recentlyDeletedRooms.delete(state.roomCode.toUpperCase());
   return {
     roomCode: state.roomCode,
     hostId: state.hostId,
@@ -88,7 +92,7 @@ function buildRecordFromRoom(
     turnTimeSeconds: state.settings.turnTimeSeconds || 60,
     version: prevVersion + 1,
     state,
-    updatedAt: Date.now(),
+    updatedAt: now,
   };
 }
 
@@ -305,6 +309,7 @@ async function pruneExpiredRoomsIfNeeded(): Promise<void> {
 async function deleteRoomRecord(roomCode: string): Promise<void> {
   const code = roomCode.trim().toUpperCase();
   memoryRooms.delete(code);
+  recentlyDeletedRooms.set(code, Date.now());
 
   const sql = await getSqlClient();
   if (sql) {
@@ -621,13 +626,28 @@ export default async (req: Request, _context: Context) => {
       }
       const knownVersion = Number(body.knownVersion) || 0;
       let rec = await loadRoomRecord(roomCode);
-      if (!rec && fallbackState && fallbackState.roomCode === roomCode) {
+      const deletedAt = recentlyDeletedRooms.get(roomCode.toUpperCase());
+      const wasRecentlyClosed =
+        Boolean(deletedAt) && Date.now() - (deletedAt ?? 0) < 5 * 60 * 1000;
+      if (
+        !rec &&
+        !wasRecentlyClosed &&
+        fallbackState &&
+        fallbackState.roomCode === roomCode
+      ) {
         const restored = hydrateGameRoom(fallbackState);
         restored.destroy();
         rec = buildRecordFromRoom(restored, Math.max(0, knownVersion));
         await saveRoomRecord(rec);
       }
       if (!rec) {
+        if (wasRecentlyClosed) {
+          return Response.json({
+            ok: false,
+            kicked: true,
+            error: 'Ігровий стіл закрито',
+          });
+        }
         return Response.json({
           ok: false,
           code: 'NEED_FALLBACK_STATE',
@@ -732,18 +752,29 @@ export default async (req: Request, _context: Context) => {
         room.removePlayerFromLobby(playerId, playerId);
       } else {
         const p = room.state.players.find((pl) => pl.id === playerId);
-        if (p && !p.isBankrupt && !p.isBot) {
+        if (p && !p.isBankrupt && !p.isBot && room.state.status === 'playing') {
           room.declareBankruptcy(playerId, true);
         }
         room.handleDisconnect(playerId);
+        if (room.state.hostId === playerId) {
+          const nextHost = room.state.players.find(
+            (pl) => pl.id !== playerId && !pl.isBot && pl.isConnected
+          );
+          if (nextHost) {
+            room.state.hostId = nextHost.id;
+          }
+        }
         room.advanceServerlessTick(Date.now());
       }
       room.destroy();
 
-      const hasActiveHuman = room.state.players.some(
-        (p) => !p.isBot && !p.isBankrupt && p.isConnected
+      const hasConnectedHuman = room.state.players.some(
+        (p) =>
+          !p.isBot &&
+          p.isConnected &&
+          (room.state.status !== 'playing' || !p.isBankrupt)
       );
-      if (!hasActiveHuman) {
+      if (!hasConnectedHuman) {
         await deleteRoomRecord(roomCode);
       } else {
         const nextRec = buildRecordFromRoom(room, rec.version);

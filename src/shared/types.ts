@@ -229,6 +229,7 @@ export interface GameState {
   turnEndsAt: number | null;
   turnDurationMs?: number | null;
   lastStepAt?: number;
+  serverTime?: number;
   playerActedThisTurn?: boolean;
   eliminatedPlayers?: EliminatedPlayerRecord[];
   botMemory?: BotMemoryState;

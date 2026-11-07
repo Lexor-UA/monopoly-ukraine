@@ -202,7 +202,30 @@ export const App: React.FC = () => {
     }, 3600);
   };
 
-  const syncJoinedRoomState = (st: GameState, updateUrlQuery: boolean) => {
+  const normalizeClientStateClock = (st: GameState): GameState => {
+    if (typeof st.serverTime !== 'number') return st;
+    const skewMs = Date.now() - st.serverTime;
+    if (Math.abs(skewMs) <= 1000) return st;
+    return {
+      ...st,
+      serverTime: Date.now(),
+      turnEndsAt:
+        typeof st.turnEndsAt === 'number' ? st.turnEndsAt + skewMs : st.turnEndsAt,
+      auction: st.auction
+        ? { ...st.auction, endsAt: st.auction.endsAt + skewMs }
+        : null,
+      pendingTrade: st.pendingTrade
+        ? {
+            ...st.pendingTrade,
+            createdAt: st.pendingTrade.createdAt + skewMs,
+            expiresAt: st.pendingTrade.expiresAt + skewMs,
+          }
+        : null,
+    };
+  };
+
+  const syncJoinedRoomState = (rawState: GameState, updateUrlQuery: boolean) => {
+    const st = normalizeClientStateClock(rawState);
     gameStateRef.current = st;
     setGameState(st);
     const me = st.players.find((p) => p.id === playerId);
@@ -373,8 +396,9 @@ export const App: React.FC = () => {
         setPublicRooms(rooms);
       },
       onState: (nextState) => {
-        gameStateRef.current = nextState;
-        setGameState(nextState);
+        const normalized = normalizeClientStateClock(nextState);
+        gameStateRef.current = normalized;
+        setGameState(normalized);
       },
       onRoomExit: (reason) => {
         gameStateRef.current = null;
@@ -414,6 +438,7 @@ export const App: React.FC = () => {
 
       if (
         (turnOverdue || auctionOverdue) &&
+        transportMode !== 'cloud' &&
         now - lastWatchdogSyncAtRef.current > 4000
       ) {
         lastWatchdogSyncAtRef.current = now;

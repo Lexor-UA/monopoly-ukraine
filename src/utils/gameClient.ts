@@ -436,7 +436,7 @@ export class HybridGameClient {
       event === 'room:join'
         ? parseRoomCodeInput(String(payload.roomCode || ''))
         : this.cloudActiveRoomCode;
-    let includeFallback = event === 'room:join' && Boolean(payload.fallbackState);
+    let includeFallback = event === 'room:join';
 
     let lastNetworkError = false;
     for (let attempt = 1; attempt <= 3; attempt++) {

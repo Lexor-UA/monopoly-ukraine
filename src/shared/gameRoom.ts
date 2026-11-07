@@ -332,6 +332,7 @@ export class GameRoom {
 
   private emit(): void {
     this.syncBotMemoryToState();
+    this.state.serverTime = Date.now();
     this.onUpdate(this);
   }
 
