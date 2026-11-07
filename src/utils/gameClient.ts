@@ -286,31 +286,56 @@ export class HybridGameClient {
     const targetCode = this.cloudActiveRoomCode;
     const seqAtStart = this.cloudMutationSeq;
     try {
-      const savedSnap = this.loadHostSnapshot();
-      const fallbackState =
-        savedSnap && savedSnap.roomCode === targetCode ? savedSnap : undefined;
-      const res = await fetch('/api/cloud-room', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'room:sync',
-          roomCode: targetCode,
-          playerId: this.opts.playerId,
-          playerName: this.cloudPlayerName,
-          token: this.cloudPlayerToken,
-          fallbackState,
-        }),
-      });
+      const sendSync = async (withFallback: boolean) => {
+        const savedSnap = withFallback ? this.loadHostSnapshot() : null;
+        const fallbackState =
+          savedSnap && savedSnap.roomCode === targetCode
+            ? savedSnap
+            : undefined;
+        return fetch('/api/cloud-room', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'room:sync',
+            roomCode: targetCode,
+            playerId: this.opts.playerId,
+            playerName: this.cloudPlayerName,
+            token: this.cloudPlayerToken,
+            knownVersion: this.cloudRoomVersion,
+            fallbackState,
+          }),
+        });
+      };
+
+      let res = await sendSync(false);
       if (!res.ok || this.destroyed || this.cloudActiveRoomCode !== targetCode) {
         return;
       }
-      const data = (await res.json()) as {
+      let data = (await res.json()) as {
         ok?: boolean;
+        unchanged?: boolean;
+        code?: string;
         kicked?: boolean;
         error?: string;
         version?: number;
         state?: GameState;
       };
+      if (
+        data?.code === 'NEED_FALLBACK_STATE' &&
+        !this.destroyed &&
+        this.cloudActiveRoomCode === targetCode
+      ) {
+        res = await sendSync(true);
+        if (
+          !res.ok ||
+          this.destroyed ||
+          this.cloudActiveRoomCode !== targetCode
+        ) {
+          return;
+        }
+        data = await res.json();
+      }
+
       if (this.destroyed || this.cloudActiveRoomCode !== targetCode) {
         return;
       }
@@ -331,6 +356,9 @@ export class HybridGameClient {
         typeof data?.version === 'number' &&
         data.version < this.cloudRoomVersion
       ) {
+        return;
+      }
+      if (data?.unchanged) {
         return;
       }
       if (data?.ok && data.state) {
@@ -408,23 +436,27 @@ export class HybridGameClient {
       event === 'room:join'
         ? parseRoomCodeInput(String(payload.roomCode || ''))
         : this.cloudActiveRoomCode;
-    const savedSnap = this.loadHostSnapshot();
-    const fallbackState =
-      savedSnap &&
-      requestedRoomCode &&
-      savedSnap.roomCode === requestedRoomCode
-        ? savedSnap
-        : undefined;
+    let includeFallback = event === 'room:join' && Boolean(payload.fallbackState);
 
     let lastNetworkError = false;
     for (let attempt = 1; attempt <= 3; attempt++) {
       if (this.destroyed) return;
       try {
+        const savedSnap = includeFallback ? this.loadHostSnapshot() : null;
+        const fallbackState = includeFallback
+          ? ((payload.fallbackState as GameState | undefined) ??
+            (savedSnap &&
+            requestedRoomCode &&
+            savedSnap.roomCode === requestedRoomCode
+              ? savedSnap
+              : undefined))
+          : undefined;
+        const { fallbackState: _omitFallback, ...cleanPayload } = payload;
         const res = await fetch('/api/cloud-room', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            ...payload,
+            ...cleanPayload,
             action: event,
             roomCode: requestedRoomCode,
             playerId: String(payload.playerId || this.opts.playerId),
@@ -439,11 +471,21 @@ export class HybridGameClient {
         }
         const data = (await res.json()) as Record<string, unknown> & {
           ok?: boolean;
+          code?: string;
           version?: number;
           state?: GameState;
           rooms?: RoomSummary[];
           error?: string;
         };
+
+        if (
+          data?.code === 'NEED_FALLBACK_STATE' &&
+          !includeFallback &&
+          attempt < 3
+        ) {
+          includeFallback = true;
+          continue;
+        }
 
         if (data?.rooms && Array.isArray(data.rooms)) {
           this.opts.onRooms(data.rooms);
@@ -516,13 +558,20 @@ export class HybridGameClient {
 
     if (lastNetworkError) {
       // Fallback: if player has a local snapshot of this room and network is momentarily unreachable
-      if (event === 'room:join' && fallbackState) {
-        this.cloudActiveRoomCode = fallbackState.roomCode;
-        this.opts.onState(fallbackState);
+      const localSnap = this.loadHostSnapshot();
+      const localFallback =
+        localSnap &&
+        requestedRoomCode &&
+        localSnap.roomCode === requestedRoomCode
+          ? localSnap
+          : undefined;
+      if (event === 'room:join' && localFallback) {
+        this.cloudActiveRoomCode = localFallback.roomCode;
+        this.opts.onState(localFallback);
         ack?.({
           ok: true,
-          roomCode: fallbackState.roomCode,
-          state: fallbackState,
+          roomCode: localFallback.roomCode,
+          state: localFallback,
         });
         return;
       }

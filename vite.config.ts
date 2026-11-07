@@ -34,6 +34,20 @@ export default defineConfig({
           if (norm.includes('node_modules/lucide-react')) {
             return 'icons-vendor';
           }
+          if (
+            norm.includes('/src/shared/gameRoom') ||
+            norm.includes('/src/shared/boardData')
+          ) {
+            return 'game-engine';
+          }
+          if (
+            norm.includes('/src/components/MonopolyBoard') ||
+            norm.includes('/src/components/SidePanels') ||
+            norm.includes('/src/components/Dice3D') ||
+            norm.includes('/src/components/EventCardDealTheatre')
+          ) {
+            return 'board-cockpit';
+          }
         },
       },
     },

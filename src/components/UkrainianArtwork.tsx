@@ -1751,6 +1751,7 @@ export const CardVisualBanner: React.FC<{
       <img
         src={imageSrc}
         alt={cell.name}
+        decoding="async"
         style={{ objectPosition }}
         className={`w-full h-full object-cover opacity-100 ${exposureClass} transition-transform duration-500 hover:scale-105`}
       />
