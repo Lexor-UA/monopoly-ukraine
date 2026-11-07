@@ -1151,14 +1151,14 @@ export function parseRoomCodeInput(raw: string): string {
 
   const upper = candidate.toUpperCase();
 
-  // 2. Match UA-1234, UA1234, UA 1234, UA_1234 anywhere in candidate
-  const uaCodeMatch = upper.match(/UA[-\s_]?(\d{4})\b/);
+  // 2. Match UA-1234..UA-123456, UA1234, UA 1234, UA_1234 anywhere in candidate
+  const uaCodeMatch = upper.match(/UA[-\s_]?(\d{4,6})\b/);
   if (uaCodeMatch) {
     return `UA-${uaCodeMatch[1]}`;
   }
 
-  // 3. Bare 4 digits "4821"
-  if (/^\d{4}$/.test(upper)) {
+  // 3. Bare 4-6 digits "4821"
+  if (/^\d{4,6}$/.test(upper)) {
     return `UA-${upper}`;
   }
 

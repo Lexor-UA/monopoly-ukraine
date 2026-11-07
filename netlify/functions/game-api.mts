@@ -28,6 +28,7 @@ import {
 interface StoredRoomRecord {
   roomCode: string;
   hostId: string;
+  hostName: string;
   roomName: string;
   gameMode: GameMode;
   status: GameState['status'];
@@ -50,12 +51,66 @@ interface StoredUserAccount {
   updatedAt: number;
 }
 
+const MAX_MEMORY_ROOMS = 400;
+const MAX_MEMORY_USERS = 800;
+const MAX_RECENTLY_DELETED = 400;
+
 const memoryRooms = new Map<string, StoredRoomRecord>();
 const memoryUsersById = new Map<string, StoredUserAccount>();
 const memoryUserIdsByUsername = new Map<string, string>();
 const recentlyDeletedRooms = new Map<string, number>();
+
+let cachedLobbyRooms: { rooms: RoomSummary[]; expiresAt: number } | null = null;
+let cachedLeaderboard: {
+  entries: LeaderboardEntry[];
+  expiresAt: number;
+} | null = null;
+
 let dbSchemaInitialized = false;
 let lastPruneAt = 0;
+
+function setMemoryRoomBounded(code: string, rec: StoredRoomRecord): void {
+  if (memoryRooms.has(code)) {
+    memoryRooms.delete(code);
+  } else if (memoryRooms.size >= MAX_MEMORY_ROOMS) {
+    const oldestKey = memoryRooms.keys().next().value;
+    if (oldestKey) memoryRooms.delete(oldestKey);
+  }
+  memoryRooms.set(code, rec);
+}
+
+function setMemoryUserBounded(acc: StoredUserAccount): void {
+  if (memoryUsersById.has(acc.userId)) {
+    memoryUsersById.delete(acc.userId);
+  } else if (memoryUsersById.size >= MAX_MEMORY_USERS) {
+    const oldestId = memoryUsersById.keys().next().value;
+    if (oldestId) {
+      const oldestAcc = memoryUsersById.get(oldestId);
+      if (oldestAcc) memoryUserIdsByUsername.delete(oldestAcc.usernameLower);
+      memoryUsersById.delete(oldestId);
+    }
+  }
+  memoryUsersById.set(acc.userId, acc);
+  memoryUserIdsByUsername.set(acc.usernameLower, acc.userId);
+}
+
+function markRecentlyDeletedBounded(code: string): void {
+  const now = Date.now();
+  recentlyDeletedRooms.delete(code);
+  if (recentlyDeletedRooms.size >= MAX_RECENTLY_DELETED) {
+    const oldestKey = recentlyDeletedRooms.keys().next().value;
+    if (oldestKey) recentlyDeletedRooms.delete(oldestKey);
+  }
+  recentlyDeletedRooms.set(code, now);
+}
+
+function invalidateLobbyCache(): void {
+  cachedLobbyRooms = null;
+}
+
+function invalidateLeaderboardCache(): void {
+  cachedLeaderboard = null;
+}
 
 function hashPassword(password: string): string {
   const salt = crypto.randomBytes(16).toString('hex');
@@ -91,6 +146,7 @@ async function getSqlClient() {
         CREATE TABLE IF NOT EXISTS magnat_rooms (
           room_code TEXT PRIMARY KEY,
           host_id TEXT NOT NULL,
+          host_name TEXT NOT NULL DEFAULT 'Гравець',
           room_name TEXT NOT NULL DEFAULT 'Бізнес-Ліга України',
           game_mode TEXT NOT NULL DEFAULT 'classic',
           status TEXT NOT NULL DEFAULT 'lobby',
@@ -104,6 +160,18 @@ async function getSqlClient() {
         )
       `;
       await sql`
+        ALTER TABLE magnat_rooms
+        ADD COLUMN IF NOT EXISTS host_name TEXT NOT NULL DEFAULT 'Гравець'
+      `;
+      await sql`
+        CREATE INDEX IF NOT EXISTS idx_magnat_rooms_lobby
+        ON magnat_rooms (is_public, status, updated_at DESC)
+      `;
+      await sql`
+        CREATE INDEX IF NOT EXISTS idx_magnat_rooms_updated
+        ON magnat_rooms (updated_at)
+      `;
+      await sql`
         CREATE TABLE IF NOT EXISTS magnat_users (
           user_id TEXT PRIMARY KEY,
           username_lower TEXT UNIQUE NOT NULL,
@@ -115,6 +183,10 @@ async function getSqlClient() {
           best_net_worth BIGINT NOT NULL DEFAULT 0,
           updated_at BIGINT NOT NULL
         )
+      `;
+      await sql`
+        CREATE INDEX IF NOT EXISTS idx_magnat_users_leaderboard
+        ON magnat_users (wins DESC, best_net_worth DESC, updated_at DESC)
       `;
       dbSchemaInitialized = true;
     }
@@ -179,8 +251,7 @@ async function loadUserByUsername(
             profile,
             updatedAt: Number(row.updated_at) || Date.now(),
           };
-          memoryUsersById.set(acc.userId, acc);
-          memoryUserIdsByUsername.set(acc.usernameLower, acc.userId);
+          setMemoryUserBounded(acc);
           return acc;
         }
       }
@@ -197,8 +268,7 @@ async function loadUserByUsername(
       })) as StoredUserAccount | null;
       if (acc && acc.profile) {
         acc.profile.stats = normalizeUserStats(acc.profile.stats);
-        memoryUsersById.set(acc.userId, acc);
-        memoryUserIdsByUsername.set(acc.usernameLower, acc.userId);
+        setMemoryUserBounded(acc);
         return acc;
       }
     } catch {
@@ -247,8 +317,7 @@ async function loadUserById(userId: string): Promise<StoredUserAccount | null> {
             profile,
             updatedAt: Number(row.updated_at) || Date.now(),
           };
-          memoryUsersById.set(acc.userId, acc);
-          memoryUserIdsByUsername.set(acc.usernameLower, acc.userId);
+          setMemoryUserBounded(acc);
           return acc;
         }
       }
@@ -265,8 +334,7 @@ async function loadUserById(userId: string): Promise<StoredUserAccount | null> {
       })) as StoredUserAccount | null;
       if (acc && acc.profile) {
         acc.profile.stats = normalizeUserStats(acc.profile.stats);
-        memoryUsersById.set(acc.userId, acc);
-        memoryUserIdsByUsername.set(acc.usernameLower, acc.userId);
+        setMemoryUserBounded(acc);
         return acc;
       }
     } catch {
@@ -280,8 +348,8 @@ async function loadUserById(userId: string): Promise<StoredUserAccount | null> {
 async function saveUserAccount(acc: StoredUserAccount): Promise<void> {
   acc.updatedAt = Date.now();
   acc.profile.updatedAt = acc.updatedAt;
-  memoryUsersById.set(acc.userId, acc);
-  memoryUserIdsByUsername.set(acc.usernameLower, acc.userId);
+  setMemoryUserBounded(acc);
+  invalidateLeaderboardCache();
 
   const sql = await getSqlClient();
   if (sql) {
@@ -336,6 +404,11 @@ async function saveUserAccount(acc: StoredUserAccount): Promise<void> {
 }
 
 async function listTopMagnates(): Promise<LeaderboardEntry[]> {
+  const now = Date.now();
+  if (cachedLeaderboard && cachedLeaderboard.expiresAt > now) {
+    return cachedLeaderboard.entries;
+  }
+
   const sql = await getSqlClient();
   if (sql) {
     try {
@@ -356,6 +429,7 @@ async function listTopMagnates(): Promise<LeaderboardEntry[]> {
           entries.push(toLeaderboardEntry(profile));
         }
       }
+      cachedLeaderboard = { entries, expiresAt: now + 5000 };
       return entries;
     } catch {
       // Fall through
@@ -382,7 +456,9 @@ async function listTopMagnates(): Promise<LeaderboardEntry[]> {
           b.bestNetWorth - a.bestNetWorth ||
           b.matchesPlayed - a.matchesPlayed
       );
-      return entries.slice(0, 15);
+      const top = entries.slice(0, 15);
+      cachedLeaderboard = { entries: top, expiresAt: now + 5000 };
+      return top;
     } catch {
       // Fall through
     }
@@ -397,7 +473,9 @@ async function listTopMagnates(): Promise<LeaderboardEntry[]> {
       b.bestNetWorth - a.bestNetWorth ||
       b.matchesPlayed - a.matchesPlayed
   );
-  return list.slice(0, 15);
+  const top = list.slice(0, 15);
+  cachedLeaderboard = { entries: top, expiresAt: now + 5000 };
+  return top;
 }
 
 function buildRecordFromRoom(
@@ -408,9 +486,11 @@ function buildRecordFromRoom(
   const state = room.state;
   state.serverTime = now;
   recentlyDeletedRooms.delete(state.roomCode.toUpperCase());
+  const host = state.players.find((p) => p.id === state.hostId);
   return {
     roomCode: state.roomCode,
     hostId: state.hostId,
+    hostName: host?.name ?? 'Гравець',
     roomName: state.settings.roomName || 'Бізнес-Ліга України',
     gameMode: state.settings.gameMode ?? 'classic',
     status: state.status,
@@ -437,6 +517,7 @@ async function loadRoomRecord(
         SELECT
           room_code,
           host_id,
+          host_name,
           room_name,
           game_mode,
           status,
@@ -458,9 +539,13 @@ async function loadRoomRecord(
             ? (JSON.parse(row.state_json) as GameState)
             : (row.state_json as GameState);
         if (parsedState && parsedState.roomCode) {
+          const host = parsedState.players?.find(
+            (p) => p.id === parsedState.hostId
+          );
           const rec: StoredRoomRecord = {
             roomCode: String(row.room_code),
             hostId: String(row.host_id),
+            hostName: String(row.host_name || host?.name || 'Гравець'),
             roomName: String(row.room_name || 'Бізнес-Ліга України'),
             gameMode:
               row.game_mode === 'team2v2' ? 'team2v2' : 'classic',
@@ -473,7 +558,7 @@ async function loadRoomRecord(
             state: parsedState,
             updatedAt: Number(row.updated_at) || Date.now(),
           };
-          memoryRooms.set(code, rec);
+          setMemoryRoomBounded(code, rec);
           return rec;
         }
       }
@@ -489,7 +574,7 @@ async function loadRoomRecord(
         type: 'json',
       })) as StoredRoomRecord | null;
       if (rec && rec.state) {
-        memoryRooms.set(code, rec);
+        setMemoryRoomBounded(code, rec);
         return rec;
       }
     } catch {
@@ -505,16 +590,6 @@ async function saveRoomRecord(
   isHeartbeatOnly = false
 ): Promise<boolean> {
   const code = record.roomCode.toUpperCase();
-  const existingMem = memoryRooms.get(code);
-  if (existingMem) {
-    if (isHeartbeatOnly && existingMem.version !== record.version) {
-      return false;
-    }
-    if (!isHeartbeatOnly && existingMem.version >= record.version) {
-      return false;
-    }
-  }
-  memoryRooms.set(code, record);
 
   const sql = await getSqlClient();
   if (sql) {
@@ -533,6 +608,7 @@ async function saveRoomRecord(
             INSERT INTO magnat_rooms (
               room_code,
               host_id,
+              host_name,
               room_name,
               game_mode,
               status,
@@ -546,6 +622,7 @@ async function saveRoomRecord(
             ) VALUES (
               ${code},
               ${record.hostId},
+              ${record.hostName},
               ${record.roomName},
               ${record.gameMode},
               ${record.status},
@@ -559,6 +636,7 @@ async function saveRoomRecord(
             )
             ON CONFLICT (room_code) DO UPDATE SET
               host_id = EXCLUDED.host_id,
+              host_name = EXCLUDED.host_name,
               room_name = EXCLUDED.room_name,
               game_mode = EXCLUDED.game_mode,
               status = EXCLUDED.status,
@@ -572,7 +650,14 @@ async function saveRoomRecord(
             WHERE magnat_rooms.version < EXCLUDED.version
             RETURNING version
           `;
-      return Array.isArray(rows) && rows.length > 0;
+      const saved = Array.isArray(rows) && rows.length > 0;
+      if (saved) {
+        setMemoryRoomBounded(code, record);
+        if (!isHeartbeatOnly) invalidateLobbyCache();
+      } else {
+        memoryRooms.delete(code);
+      }
+      return saved;
     } catch {
       // Fall through to Blobs
     }
@@ -586,34 +671,58 @@ async function saveRoomRecord(
       })) as StoredRoomRecord | null;
       if (currentBlob) {
         if (isHeartbeatOnly && currentBlob.version !== record.version) {
+          setMemoryRoomBounded(code, currentBlob);
           return false;
         }
         if (!isHeartbeatOnly && currentBlob.version >= record.version) {
-          memoryRooms.set(code, currentBlob);
+          setMemoryRoomBounded(code, currentBlob);
           return false;
         }
       }
       await blobStore.setJSON(`room:${code}`, record);
+      setMemoryRoomBounded(code, record);
+      if (!isHeartbeatOnly) invalidateLobbyCache();
       return true;
     } catch {
-      // Stored in memoryRooms
+      // Fall through to memoryRooms
     }
   }
 
+  const existingMem = memoryRooms.get(code);
+  if (existingMem) {
+    if (isHeartbeatOnly && existingMem.version !== record.version) {
+      return false;
+    }
+    if (!isHeartbeatOnly && existingMem.version >= record.version) {
+      return false;
+    }
+  }
+  setMemoryRoomBounded(code, record);
+  if (!isHeartbeatOnly) {
+    invalidateLobbyCache();
+  }
   return true;
 }
 
 async function pruneExpiredRoomsIfNeeded(): Promise<void> {
   const now = Date.now();
-  if (now - lastPruneAt < 10 * 60 * 1000) return;
+  if (now - lastPruneAt < 5 * 60 * 1000) return;
   lastPruneAt = now;
 
-  const staleCutoff = now - 12 * 60 * 60 * 1000; // 12 hours idle
-  const finishedCutoff = now - 2 * 60 * 60 * 1000; // 2 hours after finish
+  const staleCutoff = now - 6 * 60 * 60 * 1000; // 6 hours idle
+  const lobbyCutoff = now - 90 * 60 * 1000; // 90 minutes unstarted lobby
+  const finishedCutoff = now - 30 * 60 * 1000; // 30 minutes after finish
+
+  for (const [code, ts] of recentlyDeletedRooms.entries()) {
+    if (now - ts > 10 * 60 * 1000) {
+      recentlyDeletedRooms.delete(code);
+    }
+  }
 
   for (const [code, rec] of memoryRooms.entries()) {
     if (
       rec.updatedAt < staleCutoff ||
+      (rec.status === 'lobby' && rec.updatedAt < lobbyCutoff) ||
       (rec.status === 'finished' && rec.updatedAt < finishedCutoff)
     ) {
       memoryRooms.delete(code);
@@ -626,6 +735,7 @@ async function pruneExpiredRoomsIfNeeded(): Promise<void> {
       await sql`
         DELETE FROM magnat_rooms
         WHERE updated_at < ${staleCutoff}
+           OR (status = 'lobby' AND updated_at < ${lobbyCutoff})
            OR (status = 'finished' AND updated_at < ${finishedCutoff})
       `;
     } catch {
@@ -637,7 +747,8 @@ async function pruneExpiredRoomsIfNeeded(): Promise<void> {
 async function deleteRoomRecord(roomCode: string): Promise<void> {
   const code = roomCode.trim().toUpperCase();
   memoryRooms.delete(code);
-  recentlyDeletedRooms.set(code, Date.now());
+  markRecentlyDeletedBounded(code);
+  invalidateLobbyCache();
 
   const sql = await getSqlClient();
   if (sql) {
@@ -659,41 +770,38 @@ async function deleteRoomRecord(roomCode: string): Promise<void> {
 }
 
 async function listPublicRooms(): Promise<RoomSummary[]> {
-  const cutoff = Date.now() - 3 * 60 * 60 * 1000; // 3 hours
+  const now = Date.now();
+  if (cachedLobbyRooms && cachedLobbyRooms.expiresAt > now) {
+    return cachedLobbyRooms.rooms;
+  }
+
+  const cutoff = now - 90 * 60 * 1000; // 90 minutes active lobby window
   const sql = await getSqlClient();
   if (sql) {
     try {
+      // Zero JSONB (`state_json`) read — uses composite index idx_magnat_rooms_lobby!
       const rows = await sql`
         SELECT
           room_code,
+          host_name,
           room_name,
           game_mode,
-          status,
           player_count,
           max_players,
-          turn_time_seconds,
-          state_json,
-          updated_at
+          turn_time_seconds
         FROM magnat_rooms
         WHERE is_public = true
           AND status = 'lobby'
           AND updated_at >= ${cutoff}
         ORDER BY updated_at DESC
-        LIMIT 25
+        LIMIT 30
       `;
       const summaries: RoomSummary[] = [];
       for (const row of rows as Array<Record<string, unknown>>) {
-        const parsedState =
-          typeof row.state_json === 'string'
-            ? (JSON.parse(row.state_json) as GameState)
-            : (row.state_json as GameState);
-        const host = parsedState?.players?.find(
-          (p) => p.id === parsedState.hostId
-        );
         summaries.push({
           roomCode: String(row.room_code),
           roomName: String(row.room_name || 'Бізнес-Ліга України'),
-          hostName: host?.name ?? 'Гравець',
+          hostName: String(row.host_name || 'Гравець'),
           gameMode: row.game_mode === 'team2v2' ? 'team2v2' : 'classic',
           playerCount: Number(row.player_count) || 1,
           maxPlayers: Number(row.max_players) || 4,
@@ -701,6 +809,7 @@ async function listPublicRooms(): Promise<RoomSummary[]> {
           turnTimeSeconds: Number(row.turn_time_seconds) || 60,
         });
       }
+      cachedLobbyRooms = { rooms: summaries, expiresAt: now + 2000 };
       return summaries;
     } catch {
       // Fall through
@@ -712,7 +821,7 @@ async function listPublicRooms(): Promise<RoomSummary[]> {
     try {
       const { blobs } = await blobStore.list({ prefix: 'room:' });
       const summaries: RoomSummary[] = [];
-      for (const b of blobs.slice(0, 25)) {
+      for (const b of blobs.slice(0, 30)) {
         const rec = (await blobStore.get(b.key, {
           type: 'json',
         })) as StoredRoomRecord | null;
@@ -728,7 +837,7 @@ async function listPublicRooms(): Promise<RoomSummary[]> {
           summaries.push({
             roomCode: rec.roomCode,
             roomName: rec.roomName,
-            hostName: host?.name ?? 'Гравець',
+            hostName: rec.hostName || host?.name || 'Гравець',
             gameMode: rec.gameMode,
             playerCount: rec.state.players.length,
             maxPlayers: rec.maxPlayers,
@@ -737,6 +846,7 @@ async function listPublicRooms(): Promise<RoomSummary[]> {
           });
         }
       }
+      cachedLobbyRooms = { rooms: summaries, expiresAt: now + 2000 };
       return summaries;
     } catch {
       // Fall through
@@ -750,7 +860,7 @@ async function listPublicRooms(): Promise<RoomSummary[]> {
       list.push({
         roomCode: rec.roomCode,
         roomName: rec.roomName,
-        hostName: host?.name ?? 'Гравець',
+        hostName: rec.hostName || host?.name || 'Гравець',
         gameMode: rec.gameMode,
         playerCount: rec.state.players.length,
         maxPlayers: rec.maxPlayers,
@@ -759,17 +869,37 @@ async function listPublicRooms(): Promise<RoomSummary[]> {
       });
     }
   }
-  return list;
+  const topList = list.slice(0, 30);
+  cachedLobbyRooms = { rooms: topList, expiresAt: now + 2000 };
+  return topList;
 }
 
+const reservedRoomCodes = new Set<string>();
+
 async function createUniqueRoomCode(): Promise<string> {
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < 12; i++) {
     const num = Math.floor(1000 + Math.random() * 9000);
     const code = `UA-${num}`;
-    const existing = await loadRoomRecord(code);
-    if (!existing) return code;
+    if (!memoryRooms.has(code) && !reservedRoomCodes.has(code)) {
+      reservedRoomCodes.add(code);
+      const existing = await loadRoomRecord(code);
+      if (!existing) return code;
+      reservedRoomCodes.delete(code);
+    }
   }
-  return `UA-${Math.floor(10000 + Math.random() * 90000)}`;
+  for (let i = 0; i < 12; i++) {
+    const num = Math.floor(10000 + Math.random() * 90000);
+    const code = `UA-${num}`;
+    if (!memoryRooms.has(code) && !reservedRoomCodes.has(code)) {
+      reservedRoomCodes.add(code);
+      const existing = await loadRoomRecord(code);
+      if (!existing) return code;
+      reservedRoomCodes.delete(code);
+    }
+  }
+  const fallback = `UA-${Math.floor(100000 + Math.random() * 900000)}`;
+  reservedRoomCodes.add(fallback);
+  return fallback;
 }
 
 function hydrateGameRoom(state: GameState): GameRoom {
@@ -1002,7 +1132,6 @@ export default async (req: Request, _context: Context) => {
       if (!playerId) {
         return Response.json({ ok: false, error: 'Не вказано ID гравця' });
       }
-      const code = await createUniqueRoomCode();
       const gameMode: GameMode =
         body.gameMode === 'team2v2' ? 'team2v2' : 'classic';
       const botCount =
@@ -1010,45 +1139,50 @@ export default async (req: Request, _context: Context) => {
           ? 3
           : Math.min(3, Math.max(1, Number(body.botCount) || 2));
 
-      const room = new GameRoom(
-        code,
-        playerId,
-        {
-          roomName:
-            gameMode === 'team2v2'
-              ? `Альянс 2×2 • ${playerName}`
-              : `Битва Магнатів • ${playerName}`,
-          maxPlayers: botCount + 1,
-          gameMode,
-          startingMoney: 15000,
-          turnTimeSeconds: 60,
-          karpatyBonusEnabled: true,
-          isPublic: false,
-        },
-        () => {}
-      );
-      room.addOrReconnectPlayer(playerId, playerName, preferredToken);
-      for (let i = 0; i < botCount; i++) {
-        room.addBot(playerId);
-      }
-      room.startGame(playerId);
-      room.destroy();
+      for (let createAttempt = 1; createAttempt <= 5; createAttempt++) {
+        const code = await createUniqueRoomCode();
+        const room = new GameRoom(
+          code,
+          playerId,
+          {
+            roomName:
+              gameMode === 'team2v2'
+                ? `Альянс 2×2 • ${playerName}`
+                : `Битва Магнатів • ${playerName}`,
+            maxPlayers: botCount + 1,
+            gameMode,
+            startingMoney: 15000,
+            turnTimeSeconds: 60,
+            karpatyBonusEnabled: true,
+            isPublic: false,
+          },
+          () => {}
+        );
+        room.addOrReconnectPlayer(playerId, playerName, preferredToken);
+        for (let i = 0; i < botCount; i++) {
+          room.addBot(playerId);
+        }
+        room.startGame(playerId);
+        room.destroy();
 
-      const rec = buildRecordFromRoom(room, 0);
-      await saveRoomRecord(rec);
-      return Response.json({
-        ok: true,
-        roomCode: room.state.roomCode,
-        state: room.state,
-        version: rec.version,
-      });
+        const rec = buildRecordFromRoom(room, 0);
+        const saved = await saveRoomRecord(rec);
+        reservedRoomCodes.delete(code);
+        if (saved || createAttempt === 5) {
+          return Response.json({
+            ok: true,
+            roomCode: room.state.roomCode,
+            state: room.state,
+            version: rec.version,
+          });
+        }
+      }
     }
 
     if (action === 'room:create') {
       if (!playerId) {
         return Response.json({ ok: false, error: 'Не вказано ID гравця' });
       }
-      const code = await createUniqueRoomCode();
       const rawSettings = (body.settings as Partial<RoomSettings>) ?? {};
       const gameMode: GameMode =
         rawSettings.gameMode === 'team2v2' ? 'team2v2' : 'classic';
@@ -1067,66 +1201,81 @@ export default async (req: Request, _context: Context) => {
         isPublic: rawSettings.isPublic ?? true,
         karpatyBonusEnabled: rawSettings.karpatyBonusEnabled ?? true,
       };
-      const room = new GameRoom(code, playerId, settings, () => {});
-      room.addOrReconnectPlayer(playerId, playerName, preferredToken);
-      room.destroy();
 
-      const rec = buildRecordFromRoom(room, 0);
-      await saveRoomRecord(rec);
-      const rooms = await listPublicRooms();
-      return Response.json({
-        ok: true,
-        roomCode: room.state.roomCode,
-        state: room.state,
-        version: rec.version,
-        rooms,
-      });
+      for (let createAttempt = 1; createAttempt <= 5; createAttempt++) {
+        const code = await createUniqueRoomCode();
+        const room = new GameRoom(code, playerId, settings, () => {});
+        room.addOrReconnectPlayer(playerId, playerName, preferredToken);
+        room.destroy();
+
+        const rec = buildRecordFromRoom(room, 0);
+        const saved = await saveRoomRecord(rec);
+        reservedRoomCodes.delete(code);
+        if (saved || createAttempt === 5) {
+          const rooms = await listPublicRooms();
+          return Response.json({
+            ok: true,
+            roomCode: room.state.roomCode,
+            state: room.state,
+            version: rec.version,
+            rooms,
+          });
+        }
+      }
     }
 
     if (action === 'room:join') {
       if (!roomCode) {
         return Response.json({ ok: false, error: 'Введіть код кімнати' });
       }
-      let rec = await loadRoomRecord(roomCode);
-      if (!rec && fallbackState && fallbackState.roomCode === roomCode) {
-        const restored = hydrateGameRoom(fallbackState);
-        for (const p of restored.state.players) {
-          if (!p.isBot) {
-            p.isConnected = p.id === playerId;
+      for (let joinAttempt = 1; joinAttempt <= 6; joinAttempt++) {
+        let rec = await loadRoomRecord(roomCode);
+        if (!rec && fallbackState && fallbackState.roomCode === roomCode) {
+          const restored = hydrateGameRoom(fallbackState);
+          for (const p of restored.state.players) {
+            if (!p.isBot) {
+              p.isConnected = p.id === playerId;
+            }
           }
+          restored.destroy();
+          rec = buildRecordFromRoom(restored, 0);
+          await saveRoomRecord(rec);
         }
-        restored.destroy();
-        rec = buildRecordFromRoom(restored, 0);
-        await saveRoomRecord(rec);
-      }
-      if (!rec) {
+        if (!rec) {
+          return Response.json({
+            ok: false,
+            error: `Кімнату ${roomCode} не знайдено. Перевірте код або створіть нову!`,
+          });
+        }
+
+        const room = hydrateGameRoom(rec.state);
+        const res = room.addOrReconnectPlayer(
+          playerId,
+          playerName,
+          preferredToken
+        );
+        room.advanceServerlessTick(Date.now());
+        room.destroy();
+
+        if (!res.ok) {
+          return Response.json({ ok: false, error: res.error });
+        }
+
+        const nextRec = buildRecordFromRoom(room, rec.version);
+        const saved = await saveRoomRecord(nextRec);
+        if (!saved && joinAttempt < 6) {
+          await new Promise((r) =>
+            setTimeout(r, 12 * joinAttempt + Math.floor(Math.random() * 18))
+          );
+          continue;
+        }
         return Response.json({
-          ok: false,
-          error: `Кімнату ${roomCode} не знайдено. Перевірте код або створіть нову!`,
+          ok: true,
+          roomCode: room.state.roomCode,
+          state: room.state,
+          version: nextRec.version,
         });
       }
-
-      const room = hydrateGameRoom(rec.state);
-      const res = room.addOrReconnectPlayer(
-        playerId,
-        playerName,
-        preferredToken
-      );
-      room.advanceServerlessTick(Date.now());
-      room.destroy();
-
-      if (!res.ok) {
-        return Response.json({ ok: false, error: res.error });
-      }
-
-      const nextRec = buildRecordFromRoom(room, rec.version);
-      await saveRoomRecord(nextRec);
-      return Response.json({
-        ok: true,
-        roomCode: room.state.roomCode,
-        state: room.state,
-        version: nextRec.version,
-      });
     }
 
     if (action === 'room:sync') {
@@ -1297,7 +1446,7 @@ export default async (req: Request, _context: Context) => {
       return Response.json({ ok: false, error: 'Не вказано код кімнати' });
     }
 
-    for (let conflictAttempt = 1; conflictAttempt <= 2; conflictAttempt++) {
+    for (let conflictAttempt = 1; conflictAttempt <= 6; conflictAttempt++) {
       let rec = await loadRoomRecord(roomCode);
       if (!rec && fallbackState && fallbackState.roomCode === roomCode) {
         const restored = hydrateGameRoom(fallbackState);
@@ -1455,8 +1604,11 @@ export default async (req: Request, _context: Context) => {
       if (opResult.ok || tickMutated) {
         const nextRec = buildRecordFromRoom(room, rec.version);
         const saved = await saveRoomRecord(nextRec, false);
-        if (!saved && conflictAttempt < 2) {
-          // Concurrent update collided — retry once against the newly saved record
+        if (!saved && conflictAttempt < 6) {
+          // Concurrent update collided — wait brief jitter and retry against the newly saved record
+          await new Promise((r) =>
+            setTimeout(r, 12 * conflictAttempt + Math.floor(Math.random() * 18))
+          );
           continue;
         }
         currentVersion = nextRec.version;

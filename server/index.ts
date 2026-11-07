@@ -103,12 +103,17 @@ function clearRoomCleanupTimer(roomCode: string): void {
 }
 
 function generateRoomCode(): string {
-  for (let attempt = 0; attempt < 100; attempt++) {
+  for (let attempt = 0; attempt < 60; attempt++) {
     const num = Math.floor(1000 + Math.random() * 9000);
     const code = `UA-${num}`;
     if (!rooms.has(code)) return code;
   }
-  return `UA-${Date.now().toString().slice(-4)}`;
+  for (let attempt = 0; attempt < 60; attempt++) {
+    const num = Math.floor(10000 + Math.random() * 90000);
+    const code = `UA-${num}`;
+    if (!rooms.has(code)) return code;
+  }
+  return `UA-${Math.floor(100000 + Math.random() * 900000)}`;
 }
 
 function getPublicRoomSummaries() {
@@ -117,16 +122,23 @@ function getPublicRoomSummaries() {
     if (
       room.state.settings.isPublic &&
       room.state.status === 'lobby' &&
-      room.state.players.length > 0
+      room.state.players.length > 0 &&
+      room.state.players.length < room.state.settings.maxPlayers
     ) {
       list.push(room.getSummary());
     }
   }
-  return list;
+  return list.slice(-40).reverse();
 }
 
+let lobbyBroadcastTimer: ReturnType<typeof setTimeout> | null = null;
+
 function broadcastLobbyRooms(): void {
-  io.emit('lobby:rooms', getPublicRoomSummaries());
+  if (lobbyBroadcastTimer) return;
+  lobbyBroadcastTimer = setTimeout(() => {
+    lobbyBroadcastTimer = null;
+    io.emit('lobby:rooms', getPublicRoomSummaries());
+  }, 250);
 }
 
 function hasActiveHumanPresence(roomCode: string): boolean {
@@ -204,14 +216,37 @@ function attachManagedRoom(
   hostId: string,
   settings: RoomSettings
 ): GameRoom {
+  let lastStatus: GameState['status'] = 'lobby';
   const room = new GameRoom(code, hostId, settings, (updatedRoom) => {
     io.to(updatedRoom.state.roomCode).emit('room:state', updatedRoom.state);
-    broadcastLobbyRooms();
+    if (
+      updatedRoom.state.status === 'lobby' ||
+      lastStatus !== updatedRoom.state.status
+    ) {
+      lastStatus = updatedRoom.state.status;
+      broadcastLobbyRooms();
+    }
     schedulePersistRoomsSnapshot();
   });
   rooms.set(code, room);
   return room;
 }
+
+// Periodic sweeper to evict stale/finished rooms and keep memory bounded under high load
+setInterval(() => {
+  let evicted = false;
+  for (const [code, room] of rooms.entries()) {
+    if (!hasActiveHumanPresence(code) && !roomCleanupTimers.has(code)) {
+      room.destroy();
+      rooms.delete(code);
+      evicted = true;
+    }
+  }
+  if (evicted) {
+    broadcastLobbyRooms();
+    schedulePersistRoomsSnapshot();
+  }
+}, 120000);
 
 function createManagedRoom(hostId: string, settings: RoomSettings): GameRoom {
   const code = generateRoomCode();
@@ -314,7 +349,27 @@ function verifyPasswordLocal(password: string, storedHash: string): boolean {
   }
 }
 
+let persistUsersTimer: ReturnType<typeof setTimeout> | null = null;
+
+function schedulePersistLocalUsers(): void {
+  if (persistUsersTimer) return;
+  persistUsersTimer = setTimeout(() => {
+    persistUsersTimer = null;
+    try {
+      const users = Array.from(localUsersById.values());
+      const json = JSON.stringify({ savedAt: Date.now(), users });
+      void fs.promises.writeFile(SERVER_USERS_PATH, json, 'utf8').catch(() => {});
+    } catch {
+      // Ignore write errors
+    }
+  }, 250);
+}
+
 function persistLocalUsersSync(): void {
+  if (persistUsersTimer) {
+    clearTimeout(persistUsersTimer);
+    persistUsersTimer = null;
+  }
   try {
     const users = Array.from(localUsersById.values());
     fs.writeFileSync(
@@ -422,7 +477,7 @@ const handleAuthApiRequest: express.RequestHandler = (req, res) => {
 
     localUsersById.set(userId, account);
     localUserIdsByUsername.set(unameCheck.lower, userId);
-    persistLocalUsersSync();
+    schedulePersistLocalUsers();
 
     res.json({
       ok: true,
@@ -449,7 +504,7 @@ const handleAuthApiRequest: express.RequestHandler = (req, res) => {
     }
     if (!account.sessionToken) {
       account.sessionToken = crypto.randomBytes(28).toString('hex');
-      persistLocalUsersSync();
+      schedulePersistLocalUsers();
     }
     res.json({
       ok: true,
@@ -506,7 +561,7 @@ const handleAuthApiRequest: express.RequestHandler = (req, res) => {
     }
     account.updatedAt = Date.now();
     account.profile.updatedAt = account.updatedAt;
-    persistLocalUsersSync();
+    schedulePersistLocalUsers();
     res.json({
       ok: true,
       profile: account.profile,
@@ -529,7 +584,7 @@ const handleAuthApiRequest: express.RequestHandler = (req, res) => {
     account.updatedAt = Date.now();
     account.profile.updatedAt = account.updatedAt;
     if (added) {
-      persistLocalUsersSync();
+      schedulePersistLocalUsers();
     }
     res.json({ ok: true, added, profile: account.profile });
     return;
@@ -1096,6 +1151,7 @@ io.on('connection', (socket: Socket) => {
 
 const handleGracefulShutdown = () => {
   persistRoomsSnapshotSync();
+  persistLocalUsersSync();
   process.exit(0);
 };
 process.once('SIGINT', handleGracefulShutdown);

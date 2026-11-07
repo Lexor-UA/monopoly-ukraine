@@ -327,7 +327,7 @@ export class GameRoom {
     const prevSeen = player.lastSeenAt ?? 0;
     player.isConnected = true;
     player.lastSeenAt = now;
-    return !prevConnected || now - prevSeen >= 8000;
+    return !prevConnected || now - prevSeen >= 12000;
   }
 
   private emit(): void {
@@ -4578,7 +4578,7 @@ export class GameRoom {
         !p.isBot &&
         p.isConnected &&
         typeof p.lastSeenAt === 'number' &&
-        now - p.lastSeenAt > 20000
+        now - p.lastSeenAt > 30000
       ) {
         p.isConnected = false;
         mutated = true;
