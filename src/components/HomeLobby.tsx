@@ -1329,7 +1329,7 @@ export const HomeLobby: React.FC<HomeLobbyProps> = ({
                 </div>
 
                 <div className="space-y-2.5 pt-1">
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 min-[460px]:grid-cols-2 gap-2">
                     <button
                       disabled={roomBusy}
                       onClick={() => {
