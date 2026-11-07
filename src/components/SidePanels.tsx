@@ -2692,7 +2692,10 @@ export const MobileSelectedCellBar: React.FC<{
                       style={{ color: owner.color }}
                       className="font-extrabold truncate"
                     >
-                      ● {owner.id === myPlayerId ? 'ВИ' : owner.name}
+                      ●{' '}
+                      {owner.id === myPlayerId
+                        ? 'ВИ'
+                        : getShortPlayerLabel(owner)}
                       {prop?.isMortgaged
                         ? ' (Застава)'
                         : currentRent > 0

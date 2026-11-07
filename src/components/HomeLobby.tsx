@@ -1328,7 +1328,7 @@ export const HomeLobby: React.FC<HomeLobbyProps> = ({
                 </div>
 
                 <div className="space-y-2.5 pt-1">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     <button
                       disabled={roomBusy}
                       onClick={() => {
@@ -1337,9 +1337,9 @@ export const HomeLobby: React.FC<HomeLobbyProps> = ({
                         setShowCreateModal(true);
                       }}
                       title="Створити відкриту кімнату (з’явиться у списку на сайті)"
-                      className="min-w-0 py-3 px-3.5 rounded-2xl bg-gradient-to-r from-[#0057B8] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#3B82F6] dark:bg-none dark:bg-white dark:text-slate-950 dark:hover:bg-amber-300 text-white font-display font-bold text-xs flex items-center justify-center gap-2 transition shadow-md disabled:opacity-60 cursor-pointer whitespace-nowrap"
+                      className="min-w-0 py-3 px-2.5 sm:px-3.5 rounded-2xl bg-gradient-to-r from-[#0057B8] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#3B82F6] dark:bg-none dark:bg-white dark:text-slate-950 dark:hover:bg-amber-300 text-white font-extrabold text-xs tracking-tight flex items-center justify-center gap-1.5 sm:gap-2 transition shadow-md disabled:opacity-60 cursor-pointer whitespace-nowrap"
                     >
-                      <Globe className="w-4 h-4 shrink-0" />
+                      <Globe className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
                       <span>
                         {roomBusy ? 'Підключення...' : 'Відкрита кімната'}
                       </span>
@@ -1353,9 +1353,9 @@ export const HomeLobby: React.FC<HomeLobbyProps> = ({
                         setShowCreateModal(true);
                       }}
                       title="Створити закриту приватну кімнату (вхід тільки за кодом або посиланням)"
-                      className="min-w-0 py-3 px-3.5 rounded-2xl bg-slate-900/6 hover:bg-slate-900/12 dark:bg-white/10 dark:hover:bg-white/18 border border-[var(--border-strong)] text-[var(--text-primary)] font-display font-extrabold text-xs flex items-center justify-center gap-2 transition shadow-2xs disabled:opacity-60 cursor-pointer whitespace-nowrap"
+                      className="min-w-0 py-3 px-2.5 sm:px-3.5 rounded-2xl bg-slate-900/6 hover:bg-slate-900/12 dark:bg-white/10 dark:hover:bg-white/18 border border-[var(--border-strong)] text-[var(--text-primary)] font-extrabold text-xs tracking-tight flex items-center justify-center gap-1.5 sm:gap-2 transition shadow-2xs disabled:opacity-60 cursor-pointer whitespace-nowrap"
                     >
-                      <Lock className="w-4 h-4 text-amber-500 dark:text-amber-300 shrink-0" />
+                      <Lock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 dark:text-amber-300 shrink-0" />
                       <span>Закрита кімната</span>
                     </button>
                   </div>
@@ -1368,10 +1368,10 @@ export const HomeLobby: React.FC<HomeLobbyProps> = ({
                       setShowCreateModal(true);
                     }}
                     title="Створити командну онлайн-кімнату 2 на 2"
-                    className="w-full py-2.5 px-3.5 rounded-2xl bg-amber-400/14 hover:bg-amber-400 hover:text-slate-950 border border-amber-400/45 text-amber-800 dark:text-amber-200 font-display font-extrabold text-xs flex items-center justify-center gap-2 transition shadow-2xs disabled:opacity-60 cursor-pointer"
+                    className="w-full py-2.5 px-3.5 rounded-2xl bg-amber-400/14 hover:bg-amber-400 hover:text-slate-950 border border-amber-400/45 text-amber-800 dark:text-amber-200 font-extrabold text-xs flex items-center justify-center gap-2 transition shadow-2xs disabled:opacity-60 cursor-pointer"
                   >
                     <Handshake className="w-4 h-4 shrink-0" />
-                    <span>Створити командну кімнату 2 на 2 (Альянси)</span>
+                    <span>Командна кімната 2 на 2 (Альянси)</span>
                   </button>
 
                   <form
@@ -1860,16 +1860,16 @@ export const HomeLobby: React.FC<HomeLobbyProps> = ({
             </div>
 
             {/* Row 2: Balanced Full-Width 4-Column Game Universe Key Specs */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 py-4 border-b border-[var(--border-glass)]">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 py-4 border-b border-[var(--border-glass)]">
               <div className="px-3.5 py-2.5 rounded-2xl bg-[var(--surface-subtle)] border border-[var(--border-glass)] flex items-center gap-3">
                 <div className="w-8 h-8 rounded-xl bg-blue-500/12 border border-blue-500/25 flex items-center justify-center shrink-0">
                   <Building2 className="w-4 h-4 text-blue-600 dark:text-sky-300" />
                 </div>
                 <div className="min-w-0">
-                  <div className="font-display font-extrabold text-xs sm:text-[13.5px] text-blue-600 dark:text-sky-300 tabular-nums truncate">
+                  <div className="font-display font-extrabold text-xs sm:text-[13.5px] text-blue-600 dark:text-sky-300 tabular-nums leading-tight">
                     28 компаній
                   </div>
-                  <div className="text-[10.5px] font-semibold text-[var(--text-muted)] truncate">
+                  <div className="text-[11px] font-semibold text-[var(--text-muted)] leading-snug mt-0.5">
                     8 монополій • 2 спецмережі
                   </div>
                 </div>
@@ -1880,10 +1880,10 @@ export const HomeLobby: React.FC<HomeLobbyProps> = ({
                   <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-300" />
                 </div>
                 <div className="min-w-0">
-                  <div className="font-display font-extrabold text-xs sm:text-[13.5px] text-amber-600 dark:text-amber-300 tabular-nums truncate">
+                  <div className="font-display font-extrabold text-xs sm:text-[13.5px] text-amber-600 dark:text-amber-300 tabular-nums leading-tight">
                     32 картки подій
                   </div>
-                  <div className="text-[10.5px] font-semibold text-[var(--text-muted)] truncate">
+                  <div className="text-[11px] font-semibold text-[var(--text-muted)] leading-snug mt-0.5">
                     Цифровий Пуш і Фонд Єдності
                   </div>
                 </div>
@@ -1894,10 +1894,10 @@ export const HomeLobby: React.FC<HomeLobbyProps> = ({
                   <Handshake className="w-4 h-4 text-emerald-600 dark:text-emerald-300" />
                 </div>
                 <div className="min-w-0">
-                  <div className="font-display font-extrabold text-xs sm:text-[13.5px] text-emerald-600 dark:text-emerald-300 tabular-nums truncate">
+                  <div className="font-display font-extrabold text-xs sm:text-[13.5px] text-emerald-600 dark:text-emerald-300 tabular-nums leading-tight">
                     Смарт-Угоди
                   </div>
-                  <div className="text-[10.5px] font-semibold text-[var(--text-muted)] truncate">
+                  <div className="text-[11px] font-semibold text-[var(--text-muted)] leading-snug mt-0.5">
                     Живі торги й відкриті аукціони
                   </div>
                 </div>
@@ -1908,10 +1908,10 @@ export const HomeLobby: React.FC<HomeLobbyProps> = ({
                   <Users className="w-4 h-4 text-purple-600 dark:text-purple-300" />
                 </div>
                 <div className="min-w-0">
-                  <div className="font-display font-extrabold text-xs sm:text-[13.5px] text-purple-600 dark:text-purple-300 tabular-nums truncate">
+                  <div className="font-display font-extrabold text-xs sm:text-[13.5px] text-purple-600 dark:text-purple-300 tabular-nums leading-tight">
                     2–4 гравці • 2×2
                   </div>
-                  <div className="text-[10.5px] font-semibold text-[var(--text-muted)] truncate">
+                  <div className="text-[11px] font-semibold text-[var(--text-muted)] leading-snug mt-0.5">
                     Класика та режим 2 на 2
                   </div>
                 </div>
