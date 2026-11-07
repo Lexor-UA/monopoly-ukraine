@@ -376,18 +376,20 @@ export const EventCardWowOverlay: React.FC<{
     const isDiia = card.deck === 'diia';
     const arenaEl = arenaRef.current;
     const deckEl = isDiia ? diiaDeckRef.current : unityDeckRef.current;
+    const arenaW = arenaEl?.clientWidth ?? 0;
     const arenaH = arenaEl?.clientHeight ?? 0;
-    const stageScale =
-      arenaH > 0 && arenaH < 350
-        ? Math.max(0.64, Math.min(1, (arenaH - 12) / 338))
-        : 1;
+    const cardNaturalH = isPhoneBoard ? 270 : 372;
+    const cardNaturalW = isPhoneBoard ? 244 : 352;
+    const scaleH = arenaH > 0 ? (arenaH - 22) / cardNaturalH : isPhoneBoard ? 0.88 : 1;
+    const scaleW = arenaW > 0 ? (arenaW - 22) / cardNaturalW : isPhoneBoard ? 0.88 : 1;
+    const stageScale = Math.max(0.55, Math.min(isPhoneBoard ? 0.92 : 1, scaleH, scaleW));
 
     if (arenaEl && deckEl && deckEl.offsetWidth > 0) {
       const arenaCenterX = arenaEl.clientWidth / 2;
       const arenaCenterY = arenaEl.clientHeight / 2;
       const deckCenterX = deckEl.offsetLeft + deckEl.offsetWidth / 2;
       const deckCenterY = deckEl.offsetTop + deckEl.offsetHeight / 2;
-      const targetCardWidth = isPhoneBoard ? 272 : 336;
+      const targetCardWidth = isPhoneBoard ? 228 : 336;
 
       return {
         x: deckCenterX - arenaCenterX,
@@ -402,10 +404,10 @@ export const EventCardWowOverlay: React.FC<{
     }
 
     return {
-      x: isDiia ? -125 : 125,
+      x: isPhoneBoard ? (isDiia ? -46 : 46) : isDiia ? -125 : 125,
       y: 0,
-      scale: 0.46,
-      rotateZ: isDiia ? -6 : 6,
+      scale: isPhoneBoard ? 0.56 : 0.46,
+      rotateZ: isDiia ? -5 : 5,
       stageScale,
     };
   }, [card, arenaRef, diiaDeckRef, unityDeckRef, isPhoneBoard]);
@@ -456,17 +458,17 @@ export const EventCardWowOverlay: React.FC<{
   // Transform origin anchored right at the thumb-index saddle on the card edge (50%, 34%) so zero drift occurs across deck-to-center scaling!
   const handTransformOrigin = '50% 34%';
   const handBoxClass = isPhoneBoard
-    ? 'w-[260px] h-[325px]'
+    ? 'w-[218px] h-[272px]'
     : 'w-[320px] h-[400px]';
   const handPosStyle: React.CSSProperties = isDiia
     ? {
-        left: isPhoneBoard ? -130 : -160,
-        bottom: isPhoneBoard ? -203 : -250,
+        left: isPhoneBoard ? -109 : -160,
+        bottom: isPhoneBoard ? -170 : -250,
         transformOrigin: handTransformOrigin,
       }
     : {
-        right: isPhoneBoard ? -130 : -160,
-        bottom: isPhoneBoard ? -203 : -250,
+        right: isPhoneBoard ? -109 : -160,
+        bottom: isPhoneBoard ? -170 : -250,
         transformOrigin: handTransformOrigin,
       };
 
@@ -637,17 +639,17 @@ export const EventCardWowOverlay: React.FC<{
                 y: [
                   originMetrics.y,
                   originMetrics.y + 1,
-                  originMetrics.y - 22,
-                  -15,
-                  -8,
+                  originMetrics.y - (isPhoneBoard ? 8 : 22),
+                  isPhoneBoard ? -5 : -15,
+                  isPhoneBoard ? -2 : -8,
                   0,
                 ],
                 scale: [
                   originMetrics.scale,
                   originMetrics.scale * 0.99,
-                  originMetrics.scale * 1.16,
+                  originMetrics.scale * 1.12,
                   0.95,
-                  1.045,
+                  isPhoneBoard ? 1.01 : 1.045,
                   1,
                 ],
                 rotateZ: [
@@ -677,7 +679,7 @@ export const EventCardWowOverlay: React.FC<{
                 ],
               }}
               className={`relative ${
-                isPhoneBoard ? 'w-[272px]' : 'w-[318px] sm:w-[336px]'
+                isPhoneBoard ? 'w-[228px]' : 'w-[318px] sm:w-[336px]'
               }`}
             >
               {/* === LAYER 1 (z-10, UNDER THE CARD): Photorealistic 3D Magnate Hand, Chronograph, Cuff & Sleeve === */}
@@ -734,7 +736,9 @@ export const EventCardWowOverlay: React.FC<{
                       WebkitBackfaceVisibility: 'hidden',
                       transform: 'rotateY(180deg)',
                     }}
-                    className={`absolute inset-0 rounded-[22px] p-4 border-2 overflow-hidden flex flex-col justify-between bg-slate-950 shadow-[0_30px_68px_-10px_rgba(0,0,0,0.88)] ${
+                    className={`absolute inset-0 ${
+                      isPhoneBoard ? 'rounded-[18px] p-2.5' : 'rounded-[22px] p-4'
+                    } border-2 overflow-hidden flex flex-col justify-between bg-slate-950 shadow-[0_30px_68px_-10px_rgba(0,0,0,0.88)] ${
                       isDiia ? 'border-sky-300/90' : 'border-amber-300/90'
                     }`}
                   >
@@ -804,14 +808,20 @@ export const EventCardWowOverlay: React.FC<{
                     />
 
                     <div
-                      className={`pointer-events-none absolute inset-2.5 rounded-2xl border ${
+                      className={`pointer-events-none absolute ${
+                        isPhoneBoard ? 'inset-1.5 rounded-xl' : 'inset-2.5 rounded-2xl'
+                      } border ${
                         isDiia ? 'border-sky-200/45' : 'border-amber-200/45'
                       }`}
                     />
 
                     <div className="relative z-10 flex items-center justify-between">
                       <span
-                        className={`px-2.5 py-1 rounded-lg bg-slate-950/80 border text-[10px] font-black uppercase tracking-wider ${
+                        className={`${
+                          isPhoneBoard
+                            ? 'px-2 py-0.5 text-[8.5px]'
+                            : 'px-2.5 py-1 text-[10px]'
+                        } rounded-lg bg-slate-950/80 border font-black uppercase tracking-wider ${
                           isDiia
                             ? 'border-sky-300/50 text-sky-100'
                             : 'border-amber-300/50 text-amber-100'
@@ -820,45 +830,69 @@ export const EventCardWowOverlay: React.FC<{
                         КАБЗДА.UA
                       </span>
                       <span
-                        className={`w-8 h-8 rounded-xl bg-slate-950/80 border flex items-center justify-center ${
+                        className={`${
+                          isPhoneBoard ? 'w-6 h-6 rounded-lg' : 'w-8 h-8 rounded-xl'
+                        } bg-slate-950/80 border flex items-center justify-center ${
                           isDiia
                             ? 'border-sky-300/50 text-sky-300'
                             : 'border-amber-300/50 text-amber-300'
                         }`}
                       >
                         {isDiia ? (
-                          <Zap className="w-4 h-4" />
+                          <Zap className={isPhoneBoard ? 'w-3 h-3' : 'w-4 h-4'} />
                         ) : (
-                          <Shield className="w-4 h-4" />
+                          <Shield className={isPhoneBoard ? 'w-3 h-3' : 'w-4 h-4'} />
                         )}
                       </span>
                     </div>
 
-                    <div className="relative z-10 my-auto flex flex-col items-center text-center py-4">
+                    <div
+                      className={`relative z-10 my-auto flex flex-col items-center text-center ${
+                        isPhoneBoard ? 'py-1.5' : 'py-4'
+                      }`}
+                    >
                       <div
-                        className={`w-16 h-16 rounded-2xl bg-slate-950/78 backdrop-blur-md border-2 flex items-center justify-center shadow-2xl ${
+                        className={`${
+                          isPhoneBoard
+                            ? 'w-11 h-11 rounded-xl'
+                            : 'w-16 h-16 rounded-2xl'
+                        } bg-slate-950/78 backdrop-blur-md border-2 flex items-center justify-center shadow-2xl ${
                           isDiia
                             ? 'border-sky-300/65 shadow-sky-500/30'
                             : 'border-amber-300/65 shadow-amber-500/30'
                         }`}
                       >
                         {isDiia ? (
-                          <Zap className="w-8 h-8 text-sky-300" />
+                          <Zap
+                            className={`${
+                              isPhoneBoard ? 'w-5 h-5' : 'w-8 h-8'
+                            } text-sky-300`}
+                          />
                         ) : (
-                          <Shield className="w-8 h-8 text-amber-300" />
+                          <Shield
+                            className={`${
+                              isPhoneBoard ? 'w-5 h-5' : 'w-8 h-8'
+                            } text-amber-300`}
+                          />
                         )}
                       </div>
                     </div>
 
                     <div className="relative z-10 text-center board-card-caption">
                       <div
-                        className={`text-[10px] font-black uppercase tracking-[0.14em] ${
+                        className={`${
+                          isPhoneBoard ? 'text-[8.5px]' : 'text-[10px]'
+                        } font-black uppercase tracking-[0.14em] ${
                           isDiia ? 'text-sky-200' : 'text-amber-200'
                         }`}
                       >
                         {isDiia ? 'Колода реформ' : 'Колода шансу'}
                       </div>
-                      <div className="font-display font-extrabold text-lg text-white mt-0.5">
+                      <div
+                        className={`font-display font-extrabold ${
+                          isPhoneBoard ? 'text-sm' : 'text-lg'
+                        } text-white mt-0.5`}
+                      >
                         {isDiia ? 'Цифровий Пуш' : 'Фонд Єдності'}
                       </div>
                     </div>
@@ -870,7 +904,9 @@ export const EventCardWowOverlay: React.FC<{
                       backfaceVisibility: 'hidden',
                       WebkitBackfaceVisibility: 'hidden',
                     }}
-                    className={`relative rounded-[22px] overflow-hidden border-2 bg-gradient-to-b from-[#10192e] via-[#0b1222] to-[#070c17] text-white shadow-[0_28px_70px_-10px_rgba(0,0,0,0.88)] ${
+                    className={`relative ${
+                      isPhoneBoard ? 'rounded-[18px]' : 'rounded-[22px]'
+                    } overflow-hidden border-2 bg-gradient-to-b from-[#10192e] via-[#0b1222] to-[#070c17] text-white shadow-[0_28px_70px_-10px_rgba(0,0,0,0.88)] ${
                       isDiia
                         ? 'border-sky-300/80 shadow-[0_24px_65px_-12px_rgba(56,189,248,0.42)]'
                         : 'border-amber-300/85 shadow-[0_24px_65px_-12px_rgba(251,191,36,0.42)]'
@@ -890,29 +926,41 @@ export const EventCardWowOverlay: React.FC<{
 
                     {/* Top Drawer Identity & Deck Crest Header */}
                     <div
-                      className={`px-3.5 py-2 flex items-center justify-between gap-2 border-b ${
+                      className={`${
+                        isPhoneBoard ? 'px-2.5 py-1.5' : 'px-3.5 py-2'
+                      } flex items-center justify-between gap-1.5 border-b ${
                         isDiia
                           ? 'bg-sky-500/14 border-sky-300/25'
                           : 'bg-amber-500/14 border-amber-300/25'
                       }`}
                     >
-                      <div className="flex items-center gap-2 min-w-0">
+                      <div className="flex items-center gap-1.5 min-w-0">
                         {drawerPlayer && (
                           <TokenAvatar
                             token={drawerPlayer.token}
                             color={drawerPlayer.color}
-                            size={22}
+                            size={isPhoneBoard ? 18 : 22}
                           />
                         )}
-                        <span className="text-[10.5px] font-bold text-slate-200 truncate">
+                        <span
+                          className={`${
+                            isPhoneBoard ? 'text-[9.5px]' : 'text-[10.5px]'
+                          } font-bold text-slate-200 truncate`}
+                        >
                           {isDrawnByMe
-                            ? 'Ви витягуєте картку'
+                            ? isPhoneBoard
+                              ? 'Ваша картка'
+                              : 'Ви витягуєте картку'
                             : `${drawerPlayer?.name ?? 'Гравець'}`}
                         </span>
                       </div>
 
                       <span
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider shrink-0 border ${
+                        className={`inline-flex items-center gap-1 ${
+                          isPhoneBoard
+                            ? 'px-1.5 py-0.5 text-[8px]'
+                            : 'px-2 py-0.5 text-[9px]'
+                        } rounded-full font-black uppercase tracking-wider shrink-0 border ${
                           isDiia
                             ? 'bg-sky-400/15 border-sky-300/40 text-sky-200'
                             : 'bg-amber-400/15 border-amber-300/40 text-amber-200'
@@ -930,11 +978,13 @@ export const EventCardWowOverlay: React.FC<{
                     </div>
 
                     {/* Framed 3D Card Illustration Window */}
-                    <div className="px-3.5 pt-3">
+                    <div className={isPhoneBoard ? 'px-2.5 pt-1.5' : 'px-3.5 pt-3'}>
                       <div
                         className={`relative ${
-                          isPhoneBoard ? 'h-[96px]' : 'h-[122px]'
-                        } w-full rounded-2xl overflow-hidden border ${
+                          isPhoneBoard
+                            ? 'h-[52px] rounded-xl'
+                            : 'h-[122px] rounded-2xl'
+                        } w-full overflow-hidden border ${
                           isDiia
                             ? 'border-sky-300/35'
                             : 'border-amber-300/35'
@@ -949,7 +999,11 @@ export const EventCardWowOverlay: React.FC<{
 
                         {/* Illuminated Category Badge Inside Illustration */}
                         <span
-                          className={`absolute bottom-2 left-2.5 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg backdrop-blur-md border text-[9.5px] font-black uppercase tracking-wider shadow ${
+                          className={`absolute ${
+                            isPhoneBoard
+                              ? 'bottom-1.5 left-2 px-2 py-0.5 text-[8px]'
+                              : 'bottom-2 left-2.5 px-2.5 py-0.5 text-[9.5px]'
+                          } inline-flex items-center gap-1 rounded-lg backdrop-blur-md border font-black uppercase tracking-wider shadow ${
                             isDiia
                               ? 'bg-slate-950/82 border-sky-300/45 text-sky-200'
                               : 'bg-slate-950/82 border-amber-300/45 text-amber-200'
@@ -963,12 +1017,16 @@ export const EventCardWowOverlay: React.FC<{
 
                     {/* Illuminated Card Text Panel — What Is Written on the Card */}
                     <div
-                      className={`px-3.5 ${
-                        isPhoneBoard ? 'pt-2.5 pb-3' : 'pt-3 pb-3.5'
-                      } text-left space-y-2`}
+                      className={`${
+                        isPhoneBoard
+                          ? 'px-2.5 pt-1.5 pb-2 space-y-1.5'
+                          : 'px-3.5 pt-3 pb-3.5 space-y-2'
+                      } text-left`}
                     >
                       <div
-                        className={`rounded-2xl p-3 border ${
+                        className={`${
+                          isPhoneBoard ? 'rounded-xl p-2' : 'rounded-2xl p-3'
+                        } border ${
                           isDiia
                             ? 'bg-sky-950/32 border-sky-400/25 shadow-[inset_0_0_24px_rgba(56,189,248,0.08)]'
                             : 'bg-amber-950/28 border-amber-400/25 shadow-[inset_0_0_24px_rgba(251,191,36,0.08)]'
@@ -976,24 +1034,32 @@ export const EventCardWowOverlay: React.FC<{
                       >
                         <h3
                           className={`font-display font-extrabold ${
-                            isPhoneBoard ? 'text-[13.5px]' : 'text-[15.5px]'
-                          } text-white leading-snug`}
+                            isPhoneBoard
+                              ? 'text-[11.5px] leading-tight'
+                              : 'text-[15.5px] leading-snug'
+                          } text-white`}
                         >
                           {card.title}
                         </h3>
                         <p
-                          className={`mt-1.5 ${
-                            isPhoneBoard ? 'text-[11px]' : 'text-[12.5px]'
-                          } font-medium text-slate-200/95 leading-relaxed`}
+                          className={`${
+                            isPhoneBoard
+                              ? 'mt-1 text-[9.5px] leading-snug'
+                              : 'mt-1.5 text-[12.5px] leading-relaxed'
+                          } font-medium text-slate-200/95`}
                         >
                           {card.description}
                         </p>
                       </div>
 
                       {/* Bottom Outcome Badge + Quick Continue Button */}
-                      <div className="flex items-center justify-between gap-2 pt-0.5">
+                      <div className="flex items-center justify-between gap-1.5 pt-0.5">
                         <span
-                          className={`px-3 py-1.5 rounded-xl text-xs font-display font-extrabold tabular-nums border shadow-sm ${
+                          className={`${
+                            isPhoneBoard
+                              ? 'px-2 py-1 rounded-lg text-[10px]'
+                              : 'px-3 py-1.5 rounded-xl text-xs'
+                          } font-display font-extrabold tabular-nums border shadow-sm truncate ${
                             card.impactText.startsWith('-') ||
                             card.badge.toLowerCase().includes('фінмоніторинг')
                               ? 'bg-rose-500/18 border-rose-400/45 text-rose-200'
@@ -1012,7 +1078,11 @@ export const EventCardWowOverlay: React.FC<{
                             sound.playClick();
                             onDismiss();
                           }}
-                          className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition cursor-pointer whitespace-nowrap shadow-md ${
+                          className={`${
+                            isPhoneBoard
+                              ? 'px-2.5 py-1 rounded-lg text-[10.5px]'
+                              : 'px-3.5 py-1.5 rounded-xl text-xs'
+                          } font-extrabold transition cursor-pointer whitespace-nowrap shadow-md shrink-0 ${
                             isDiia
                               ? 'bg-sky-400 hover:bg-sky-300 text-slate-950'
                               : 'bg-amber-400 hover:bg-amber-300 text-slate-950'
@@ -1089,70 +1159,94 @@ export const DockedEventCardSummary: React.FC<{
         : 'border-amber-400/60 dark:border-amber-300/45'
     }`}
   >
-    <div
-      className={`px-3 py-1.5 flex items-center justify-between gap-2 border-b ${
-        card.deck === 'diia'
-          ? 'bg-sky-500/12 dark:bg-sky-400/12 border-sky-400/25'
-          : 'bg-amber-500/12 dark:bg-amber-400/12 border-amber-400/25'
-      }`}
-    >
-      <span
-        className={`inline-flex items-center gap-1.5 text-[9.5px] font-black uppercase tracking-wider truncate ${
+    {isPhoneBoard ? (
+      <div
+        className={`px-2.5 py-1.5 flex items-center justify-between gap-1.5 ${
           card.deck === 'diia'
-            ? 'text-sky-700 dark:text-sky-300'
-            : 'text-amber-800 dark:text-amber-300'
+            ? 'bg-sky-500/12 dark:bg-sky-400/12'
+            : 'bg-amber-500/12 dark:bg-amber-400/12'
         }`}
       >
-        {card.deck === 'diia' ? (
-          <Zap className="w-3 h-3 shrink-0" />
-        ) : (
-          <Shield className="w-3 h-3 shrink-0" />
-        )}
-        <span>{card.badge}</span>
-      </span>
+        <div className="flex items-center gap-1.5 min-w-0">
+          {card.deck === 'diia' ? (
+            <Zap className="w-3 h-3 shrink-0 text-sky-500 dark:text-sky-300" />
+          ) : (
+            <Shield className="w-3 h-3 shrink-0 text-amber-500 dark:text-amber-300" />
+          )}
+          <span className="font-display font-extrabold text-[10.5px] leading-tight truncate">
+            {card.title}
+          </span>
+        </div>
 
-      <div className="flex items-center gap-1.5 shrink-0">
-        <span
-          className={`px-2 py-0.5 rounded-full text-[10px] font-black tabular-nums whitespace-nowrap ${
-            card.impactText.startsWith('-')
-              ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-400/30'
-              : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-400/30'
+        <div className="flex items-center gap-1 shrink-0">
+          <span
+            className={`px-1.5 py-0.5 rounded-full text-[9px] font-black tabular-nums whitespace-nowrap ${
+              card.impactText.startsWith('-')
+                ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-400/30'
+                : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-400/30'
+            }`}
+          >
+            {card.impactText}
+          </span>
+          <RotateCcw className="w-3 h-3 opacity-65" />
+        </div>
+      </div>
+    ) : (
+      <>
+        <div
+          className={`px-3 py-1.5 flex items-center justify-between gap-2 border-b ${
+            card.deck === 'diia'
+              ? 'bg-sky-500/12 dark:bg-sky-400/12 border-sky-400/25'
+              : 'bg-amber-500/12 dark:bg-amber-400/12 border-amber-400/25'
           }`}
         >
-          {card.impactText}
-        </span>
-        <RotateCcw className="w-3 h-3 opacity-60" />
-      </div>
-    </div>
+          <span
+            className={`inline-flex items-center gap-1.5 text-[9.5px] font-black uppercase tracking-wider truncate ${
+              card.deck === 'diia'
+                ? 'text-sky-700 dark:text-sky-300'
+                : 'text-amber-800 dark:text-amber-300'
+            }`}
+          >
+            {card.deck === 'diia' ? (
+              <Zap className="w-3 h-3 shrink-0" />
+            ) : (
+              <Shield className="w-3 h-3 shrink-0" />
+            )}
+            <span>{card.badge}</span>
+          </span>
 
-    <div
-      className={`flex items-start ${isPhoneBoard ? 'p-2 gap-2' : 'p-2.5 gap-2.5'}`}
-    >
-      {!isUltraCompact && (
-        <img
-          src={getEventCardArtwork(card)}
-          alt=""
-          className={`${
-            isPhoneBoard ? 'w-9 h-9 rounded-lg' : 'w-11 h-11 rounded-xl'
-          } object-cover border border-slate-200 dark:border-white/15 shadow-sm shrink-0`}
-        />
-      )}
-      <div className="flex-1 min-w-0">
-        <div
-          className={`font-display font-extrabold ${
-            isPhoneBoard ? 'text-[11px]' : 'text-xs'
-          } leading-tight`}
-        >
-          {card.title}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span
+              className={`px-2 py-0.5 rounded-full text-[10px] font-black tabular-nums whitespace-nowrap ${
+                card.impactText.startsWith('-')
+                  ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-400/30'
+                  : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-400/30'
+              }`}
+            >
+              {card.impactText}
+            </span>
+            <RotateCcw className="w-3 h-3 opacity-60" />
+          </div>
         </div>
-        <p
-          className={`${
-            isPhoneBoard ? 'text-[9.5px]' : 'text-[10.5px]'
-          } line-clamp-2 font-medium text-slate-600 dark:text-slate-300 mt-0.5 leading-snug`}
-        >
-          {card.description}
-        </p>
-      </div>
-    </div>
+
+        <div className="flex items-start p-2.5 gap-2.5">
+          {!isUltraCompact && (
+            <img
+              src={getEventCardArtwork(card)}
+              alt=""
+              className="w-11 h-11 rounded-xl object-cover border border-slate-200 dark:border-white/15 shadow-sm shrink-0"
+            />
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="font-display font-extrabold text-xs leading-tight">
+              {card.title}
+            </div>
+            <p className="text-[10.5px] line-clamp-2 font-medium text-slate-600 dark:text-slate-300 mt-0.5 leading-snug">
+              {card.description}
+            </p>
+          </div>
+        </div>
+      </>
+    )}
   </motion.button>
 );
