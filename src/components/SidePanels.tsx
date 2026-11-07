@@ -370,19 +370,19 @@ export const PlayersCardsList: React.FC<{
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-1.5 min-w-0">
-                  <div className="flex items-center gap-1 flex-wrap min-w-0">
-                    <span className="font-extrabold text-xs sm:text-[13px] truncate max-w-[140px] 2xl:max-w-[175px]">
-                      {p.name}
+                  <div className="flex items-center gap-1 min-w-0 overflow-hidden">
+                    <span className="font-extrabold text-[11.5px] xl:text-xs 2xl:text-[13px] truncate">
+                      {p.isBot ? p.name.replace(/\s*\(AI\)$/i, '') : p.name}
                     </span>
                     {isMe && (
-                      <span className="px-1.5 py-0.2 rounded-full bg-white text-slate-950 border border-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.4)] text-[8.5px] font-black shrink-0">
+                      <span className="px-1.5 py-0.2 rounded-full bg-white text-slate-950 border border-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.4)] text-[8px] 2xl:text-[8.5px] font-black shrink-0">
                         ВИ
                       </span>
                     )}
                     {isMyTeammate && (
                       <span
                         title="Ваш напарник у режимі 2 на 2 — оренда між вами 0 ₴!"
-                        className="px-1.5 py-0.2 rounded-full bg-sky-400/20 text-sky-700 dark:text-sky-200 border border-sky-400/50 text-[8.5px] font-black shrink-0"
+                        className="px-1.5 py-0.2 rounded-full bg-sky-400/20 text-sky-700 dark:text-sky-200 border border-sky-400/50 text-[8px] 2xl:text-[8.5px] font-black shrink-0"
                       >
                         🤝 НАПАРНИК
                       </span>
@@ -399,24 +399,24 @@ export const PlayersCardsList: React.FC<{
                       </span>
                     )}
                     {p.isBot && (
-                      <span className="px-1 py-0.2 rounded bg-slate-500/20 text-[8.5px] font-extrabold shrink-0">
+                      <span className="px-1 py-0.2 rounded bg-slate-500/20 text-[8px] 2xl:text-[8.5px] font-extrabold shrink-0">
                         AI
                       </span>
                     )}
                     {isTurn && (
-                      <span className="px-1.5 py-0.2 rounded bg-amber-400/20 text-amber-600 dark:text-amber-300 text-[8.5px] font-black shrink-0">
+                      <span className="px-1.5 py-0.2 rounded bg-amber-400/20 text-amber-600 dark:text-amber-300 text-[8px] 2xl:text-[8.5px] font-black shrink-0">
                         ХІД
                       </span>
                     )}
                     {!p.isBot && !p.isConnected && !p.isBankrupt && (
-                      <span className="px-1.5 py-0.2 rounded bg-rose-500/18 text-rose-600 dark:text-rose-300 text-[8.5px] font-extrabold shrink-0">
+                      <span className="px-1.5 py-0.2 rounded bg-rose-500/18 text-rose-600 dark:text-rose-300 text-[8px] 2xl:text-[8.5px] font-extrabold shrink-0">
                         ОФЛАЙН
                       </span>
                     )}
                     {!p.isBot && !p.isBankrupt && (p.missedTurns ?? 0) > 0 && (
                       <span
                         title="Пропущено ходів без дій (3 поспіль — виліт із гри)"
-                        className={`px-1.5 py-0.2 rounded text-[8.5px] font-black shrink-0 tabular-nums ${
+                        className={`px-1.5 py-0.2 rounded text-[8px] 2xl:text-[8.5px] font-black shrink-0 tabular-nums ${
                           (p.missedTurns ?? 0) >= 2
                             ? 'bg-rose-500/22 text-rose-600 dark:text-rose-300 border border-rose-500/40 animate-pulse'
                             : 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30'
@@ -435,9 +435,15 @@ export const PlayersCardsList: React.FC<{
                 <div className="flex items-center justify-between gap-1.5 mt-1 min-w-0">
                   <div className="flex items-center gap-1 text-[9.5px] 2xl:text-[10px] text-[var(--text-muted)] font-semibold tabular-nums min-w-0">
                     <span className="whitespace-nowrap shrink-0">
-                      {p.isBankrupt
-                        ? 'Банкрут'
-                        : `Капітал: ${formatMoney(netWorth)}`}
+                      {p.isBankrupt ? (
+                        'Банкрут'
+                      ) : (
+                        <>
+                          <span className="hidden 2xl:inline">Капітал: </span>
+                          <span className="2xl:hidden">Кап. </span>
+                          {formatMoney(netWorth)}
+                        </>
+                      )}
                     </span>
                     {!p.isBankrupt && (
                       <>
@@ -1901,11 +1907,14 @@ export const LeftPlayersPanel: React.FC<LeftPanelProps> = ({
   return (
     <aside className="hidden lg:flex lg:w-[252px] xl:w-[276px] 2xl:w-[356px] lg:h-full shrink-0 flex-col gap-2 overflow-hidden">
       {/* Compact Header Card */}
-      <div className="glass-panel rounded-2xl p-2.5 2xl:p-3 flex items-center justify-between gap-1.5 shrink-0">
-        <div className="flex items-center gap-2 2xl:gap-2.5 min-w-0">
+      <div className="glass-panel rounded-2xl p-2 2xl:p-3 flex items-center justify-between gap-1.5 shrink-0">
+        <div className="flex items-center gap-2 2xl:gap-2.5 min-w-0 overflow-hidden">
           <MagnatBrandIcon size="sm" />
-          <div className="min-w-0">
-            <MagnatWordmark size="sm" />
+          <div className="min-w-0 overflow-hidden">
+            <MagnatWordmark
+              size="sm"
+              ingotClassName="hidden 2xl:inline-flex"
+            />
             <button
               onClick={copyRoomLink}
               title="Скопіювати посилання на кімнату"
@@ -1924,18 +1933,18 @@ export const LeftPlayersPanel: React.FC<LeftPanelProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center shrink-0">
+        <div className="flex items-center gap-0.5 shrink-0">
           <button
             onClick={onOpenRules}
             title="Правила гри"
-            className="p-1 2xl:p-2 rounded-xl hover:bg-slate-500/15 transition cursor-pointer"
+            className="p-1.5 2xl:p-2 rounded-xl hover:bg-slate-500/15 transition cursor-pointer"
           >
             <BookOpen className="w-4 h-4" />
           </button>
           <button
             onClick={onToggleSound}
             title={soundEnabled ? 'Вимкнути звук' : 'Увімкнути звук'}
-            className="p-1 2xl:p-2 rounded-xl hover:bg-slate-500/15 transition cursor-pointer"
+            className="p-1.5 2xl:p-2 rounded-xl hover:bg-slate-500/15 transition cursor-pointer"
           >
             {soundEnabled ? (
               <Volume2 className="w-4 h-4" />
@@ -1946,7 +1955,7 @@ export const LeftPlayersPanel: React.FC<LeftPanelProps> = ({
           <button
             onClick={onToggleDarkMode}
             title="Перемкнути тему Obsidian / Аврора"
-            className="p-1 2xl:p-2 rounded-xl hover:bg-slate-500/15 transition cursor-pointer"
+            className="p-1.5 2xl:p-2 rounded-xl hover:bg-slate-500/15 transition cursor-pointer"
           >
             {darkMode ? (
               <Sun className="w-4 h-4 text-amber-400" />
@@ -1957,7 +1966,7 @@ export const LeftPlayersPanel: React.FC<LeftPanelProps> = ({
           <button
             onClick={onLeaveGame}
             title="Вийти в головне меню"
-            className="p-1 2xl:p-2 rounded-xl hover:bg-rose-500/15 text-rose-500 transition cursor-pointer"
+            className="p-1.5 2xl:p-2 rounded-xl hover:bg-rose-500/15 text-rose-500 transition cursor-pointer"
           >
             <LogOut className="w-4 h-4" />
           </button>

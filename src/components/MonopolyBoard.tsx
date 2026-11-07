@@ -121,11 +121,16 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
   onEndTurn,
   onOpenTradeModal,
 }) => {
+  const stageSlotRef = useRef<HTMLDivElement | null>(null);
   const boardRef = useRef<HTMLDivElement | null>(null);
   const cellRefs = useRef<(HTMLDivElement | null)[]>([]);
   const pawnHopRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const resizeRafRef = useRef<number | null>(null);
   const [confirmBankrupt, setConfirmBankrupt] = useState(false);
+  const [autoBoardSizePx, setAutoBoardSizePx] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
   const [boardWidth, setBoardWidth] = useState<number>(() =>
     typeof window !== 'undefined'
       ? window.innerWidth >= 1280
@@ -244,9 +249,46 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
     }
   }, []);
 
+  const effectiveBoardSizePx = boardSizePx ?? autoBoardSizePx;
+
+  useLayoutEffect(() => {
+    if (boardSizePx) return;
+    const slotEl = stageSlotRef.current;
+    if (!slotEl) return;
+
+    const updateAutoSlotSize = () => {
+      const slotW = Math.floor(slotEl.clientWidth);
+      const slotH = Math.floor(slotEl.clientHeight);
+      if (slotW < 220 || slotH < 220) return;
+      const h = Math.min(slotH, slotW);
+      const w = Math.min(slotW, Math.round(h * 1.18), 1340);
+      setAutoBoardSizePx((prev) =>
+        prev && prev.width === w && prev.height === h
+          ? prev
+          : { width: w, height: h }
+      );
+    };
+
+    updateAutoSlotSize();
+    const ro =
+      typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(updateAutoSlotSize)
+        : null;
+    ro?.observe(slotEl);
+    window.addEventListener('resize', updateAutoSlotSize);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener('resize', updateAutoSlotSize);
+    };
+  }, [boardSizePx]);
+
   useLayoutEffect(() => {
     measureBoardGeometry(false);
-  }, [measureBoardGeometry, boardSizePx?.width, boardSizePx?.height]);
+  }, [
+    measureBoardGeometry,
+    effectiveBoardSizePx?.width,
+    effectiveBoardSizePx?.height,
+  ]);
 
   useEffect(() => {
     const el = boardRef.current;
@@ -587,13 +629,16 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
   );
 
   return (
-    <div className="w-full h-full flex items-center justify-center">
+    <div
+      ref={stageSlotRef}
+      className="w-full h-full min-w-0 min-h-0 flex items-center justify-center overflow-hidden"
+    >
       <div
         ref={boardRef}
         className={`${
-          boardSizePx
+          effectiveBoardSizePx
             ? 'shrink-0'
-            : 'w-full max-w-[min(1340px,calc((100dvh-14px)*1.20))] lg:max-h-[calc(100dvh-14px)] aspect-square lg:aspect-[1.18/1] xl:aspect-[1.20/1]'
+            : 'w-full max-w-[min(1340px,calc((100dvh-14px)*1.18))] lg:max-h-[calc(100dvh-14px)] aspect-square lg:aspect-[1.18/1]'
         } ${
           isPhoneBoard
             ? 'rounded-[16px] p-1'
@@ -604,10 +649,10 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
                 : 'rounded-[28px] p-2.5 sm:p-3'
         } board-luxury-frame relative select-none`}
         style={{
-          ...(boardSizePx
+          ...(effectiveBoardSizePx
             ? {
-                width: `${boardSizePx.width}px`,
-                height: `${boardSizePx.height}px`,
+                width: `${effectiveBoardSizePx.width}px`,
+                height: `${effectiveBoardSizePx.height}px`,
               }
             : undefined),
           display: 'grid',
@@ -729,25 +774,6 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
           const isOwnerAlly = Boolean(
             owner && areTeammates(gameState.settings.gameMode, mePlayer, owner)
           );
-          const hasTopCornerSibling = Boolean(
-            (isSpecialNetwork && !isUltraCompact) ||
-              (prop && prop.branches > 0)
-          );
-          const baseOwnerShort = owner
-            ? getBoardPawnLabel(
-                owner.name,
-                false,
-                !isHorizontalSide && hasTopCornerSibling
-              )
-            : '';
-          const ownerTagLabel = owner
-            ? isOwnerMe
-              ? 'ВИ'
-              : isOwnerAlly && !isCompactBoard && !hasTopCornerSibling
-                ? `🤝 ${baseOwnerShort}`
-                : baseOwnerShort
-            : '';
-
           let ownedStatusDisplay: string | null = null;
           if (owner && prop) {
             if (prop.isMortgaged) {
@@ -760,9 +786,7 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
                   !gameState.properties[c.index]?.isMortgaged
               ).length;
               const mult = ownedUtils >= 2 ? 100 : 40;
-              ownedStatusDisplay = isCompactBoard
-                ? `×${mult}`
-                : `Ор. ×${mult}`;
+              ownedStatusDisplay = `×${mult}`;
             } else {
               const liveRent = calculateRent(
                 cell.index,
@@ -771,50 +795,36 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
               );
               const useCompactRent =
                 isCompactBoard ||
+                isLaptopBoard ||
                 (isHorizontalSide && liveRent >= 1000) ||
                 liveRent >= 10000;
-              const rentValStr = formatBoardPrice(
+              ownedStatusDisplay = formatBoardPrice(
                 liveRent,
                 useCompactRent,
                 isUltraCompact
               );
-              const monopolyPrefix =
-                isCollectedMonopoly && !isCompactBoard && !isPhoneBoard
-                  ? '👑 '
-                  : '';
-              ownedStatusDisplay =
-                isCompactBoard || isPhoneBoard
-                  ? rentValStr
-                  : `${monopolyPrefix}Ор. ${rentValStr}`;
             }
           }
 
           // Owner-Colored Rent Pill:
-          // - YOUR ASSET ("ВИ"): Rich Emerald-Gold VIP Pill
-          // - RIVAL / ALLY ASSET: Vivid Owner-Color Gradient Pill so every player's properties are distinct at a glance!
+          // Vivid Owner-Color Gradient Pill matching each player's territory color 1:1 across the board and sidebar!
           const ownedPillStyle: React.CSSProperties | undefined = owner
             ? prop?.isMortgaged
               ? {
                   backgroundColor: 'rgba(127, 29, 29, 0.95)',
                   borderColor: 'rgba(252, 165, 165, 0.65)',
                 }
-              : isOwnerMe
-                ? {
-                    background:
-                      'linear-gradient(135deg, color-mix(in srgb, #10B981 82%, #020617) 0%, color-mix(in srgb, #059669 66%, #020617) 100%)',
-                    borderColor: isCollectedMonopoly
-                      ? 'rgba(253, 224, 71, 0.95)'
-                      : 'rgba(167, 243, 208, 0.9)',
-                    boxShadow:
-                      '0 2px 6px rgba(2, 6, 23, 0.88), 0 0 8px rgba(16, 185, 129, 0.32)',
-                  }
-                : {
-                    background: `linear-gradient(135deg, color-mix(in srgb, ${owner.color} 86%, #020617) 0%, color-mix(in srgb, ${owner.color} 62%, #020617) 100%)`,
-                    borderColor: isCollectedMonopoly
-                      ? 'rgba(253, 224, 71, 0.95)'
+              : {
+                  background: `linear-gradient(135deg, color-mix(in srgb, ${owner.color} 86%, #020617) 0%, color-mix(in srgb, ${owner.color} 62%, #020617) 100%)`,
+                  borderColor: isCollectedMonopoly
+                    ? 'rgba(253, 224, 71, 0.95)'
+                    : isOwnerMe
+                      ? 'rgba(255, 255, 255, 0.88)'
                       : `color-mix(in srgb, ${owner.color} 72%, #ffffff)`,
-                    boxShadow: '0 2px 5px rgba(2, 6, 23, 0.88)',
-                  }
+                  boxShadow: isOwnerMe
+                    ? `0 2px 6px rgba(2, 6, 23, 0.9), 0 0 8px ${owner.color}55`
+                    : '0 2px 5px rgba(2, 6, 23, 0.88)',
+                }
             : undefined;
 
           // Non-overlapping clearance offsets around the Bold Inner Monopoly Header Plate
@@ -857,7 +867,7 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
               : 'left-1.5';
 
           // Card Perimeter Border & Glow Hierarchy:
-          // - Bought cards light up with a crisp 2px border in the Owner's Color (or Emerald/White for "ВИ")
+          // - Bought cards light up with a crisp 2px border in the Owner's exact territory color
           // - Unbought cards keep a calm 1px frame while the inner Monopoly Sector Bar displays the sector color
           const cardBorderColor = isSelected
             ? '#38BDF8'
@@ -865,13 +875,11 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
               ? cell.color
               : isCollectedMonopoly
                 ? '#FDE047'
-                : isOwnerMe
-                  ? '#34D399'
-                  : owner
-                    ? `color-mix(in srgb, ${owner.color} 88%, #ffffff)`
-                    : isCompanyMonopoly && cell.color
-                      ? `color-mix(in srgb, ${cell.color} 45%, rgba(255, 255, 255, 0.16))`
-                      : undefined;
+                : owner
+                  ? `color-mix(in srgb, ${owner.color} 88%, #ffffff)`
+                  : isCompanyMonopoly && cell.color
+                    ? `color-mix(in srgb, ${cell.color} 45%, rgba(255, 255, 255, 0.16))`
+                    : undefined;
 
           const cardBoxShadow = isSelected
             ? isOwnerMe
@@ -887,10 +895,10 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
                   }`
                 : isCollectedMonopoly && cell.color
                   ? isOwnerMe
-                    ? `0 0 0 1.5px #FDE047, 0 0 14px rgba(16, 185, 129, 0.5), inset 0 0 0 1.5px rgba(255, 255, 255, 0.9)`
+                    ? `0 0 0 1.5px #FDE047, 0 0 14px ${owner?.color ?? cell.color}80, inset 0 0 0 1.5px rgba(255, 255, 255, 0.9)`
                     : `0 0 0 1px #FBBF24, 0 0 12px ${owner?.color ?? cell.color}66, inset 0 0 0 1px rgba(253, 224, 71, 0.45)`
-                  : isOwnerMe
-                    ? '0 0 0 1px rgba(52, 211, 153, 0.72), 0 0 12px rgba(16, 185, 129, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.82)'
+                  : isOwnerMe && owner
+                    ? `0 0 12px ${owner.color}55, inset 0 0 0 1px rgba(255, 255, 255, 0.82)`
                     : owner
                       ? `0 0 10px ${owner.color}40, inset 0 0 0 0.75px ${owner.color}88`
                       : 'inset 0 0 8px rgba(6, 10, 20, 0.24), 0 2px 6px rgba(0, 0, 0, 0.30)';
@@ -1085,115 +1093,6 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
                       : `×${specialNetworkTotal}`}
                   </span>
                 </div>
-              )}
-
-              {/* UNMISTAKABLE OWNER PLAQUE (Desktop/Tablet only — on mobile, ownership + token emblem live cleanly inside the bottom rent badge so the card name & 3D artwork are 100% uncovered!):
-                  - YOUR ASSET ("ВИ"): Crisp Bright-White VIP Capsule + Emerald Glow Ring
-                  - RIVAL ASSET ("Лев / Леся / Тарас"): Vivid Solid Rival-Color Capsule */}
-              {owner && !isPhoneBoard && (
-                <span
-                  style={
-                    isOwnerMe
-                      ? {
-                          background:
-                            'linear-gradient(180deg, #FFFFFF 0%, #E2E8F0 100%)',
-                          borderColor: isCollectedMonopoly
-                            ? '#F59E0B'
-                            : '#10B981',
-                          boxShadow:
-                            '0 0 0 1px rgba(2, 6, 23, 0.92), 0 0 10px rgba(16, 185, 129, 0.52), 0 3px 7px rgba(2, 6, 23, 0.9)',
-                        }
-                      : isOwnerAlly
-                        ? {
-                            background: `linear-gradient(135deg, color-mix(in srgb, ${owner.color} 86%, #082F49) 0%, color-mix(in srgb, ${owner.color} 58%, #082F49) 100%)`,
-                            borderColor: isCollectedMonopoly
-                              ? '#FDE047'
-                              : '#38BDF8',
-                            boxShadow:
-                              '0 0 0 1px rgba(2, 6, 23, 0.95), 0 0 8px rgba(56, 189, 248, 0.42), 0 3px 7px rgba(2, 6, 23, 0.92)',
-                          }
-                        : {
-                            background: `linear-gradient(135deg, color-mix(in srgb, ${owner.color} 90%, #020617) 0%, color-mix(in srgb, ${owner.color} 64%, #020617) 100%)`,
-                            borderColor: isCollectedMonopoly
-                              ? '#FDE047'
-                              : 'rgba(255, 255, 255, 0.62)',
-                            boxShadow:
-                              '0 0 0 1px rgba(2, 6, 23, 0.95), 0 3px 7px rgba(2, 6, 23, 0.92)',
-                          }
-                  }
-                  title={
-                    isCollectedMonopoly
-                      ? `МОНОПОЛІЯ (${cell.sectorName}) • Власник: ${owner.name}${
-                          isOwnerAlly
-                            ? ' (Ваш напарник — оренда для вас 0 ₴)'
-                            : ''
-                        }`
-                      : `Власник активу: ${owner.name}${
-                          isOwnerAlly
-                            ? ' (Ваш напарник — оренда для вас 0 ₴)'
-                            : ''
-                        }`
-                  }
-                  className={`absolute ${
-                    pos.side === 'left'
-                      ? `top-1 ${leftColInnerRightBadgeClass}`
-                      : pos.side === 'right'
-                        ? `top-1 ${rightColInnerLeftBadgeClass}`
-                        : pos.side === 'bottom'
-                          ? `${bottomRowBadgeTopClass} right-1`
-                          : `${topRowBadgeTopClass} right-1`
-                  } ${
-                    isCompactBoard && !isHorizontalSide && hasTopCornerSibling
-                      ? 'p-[1.5px] rounded-full justify-center'
-                      : 'pl-[2px] pr-1.5 py-[1px] rounded-full gap-1'
-                  } border inline-flex items-center z-10 pointer-events-none leading-none`}
-                >
-                  <span
-                    style={{
-                      backgroundColor: owner.color,
-                      boxShadow: isOwnerMe
-                        ? 'inset 0 0.5px 1px rgba(255, 255, 255, 0.55), 0 0 0 1px rgba(2, 6, 23, 0.8)'
-                        : 'inset 0 0.5px 1px rgba(255, 255, 255, 0.55), 0 0 0 0.75px rgba(2, 6, 23, 0.72)',
-                    }}
-                    className="w-[12.5px] h-[12.5px] rounded-full inline-flex items-center justify-center shrink-0"
-                  >
-                    {isCollectedMonopoly ? (
-                      <Crown className="w-2.5 h-2.5 fill-amber-200 text-slate-950 shrink-0" />
-                    ) : (
-                      <TokenEmblemSvg
-                        token={owner.token}
-                        className="w-[78%] h-[78%]"
-                      />
-                    )}
-                  </span>
-
-                  {!(
-                    isCompactBoard &&
-                    !isHorizontalSide &&
-                    hasTopCornerSibling
-                  ) && (
-                    <span
-                      style={
-                        isOwnerMe
-                          ? undefined
-                          : { textShadow: '0 1px 2px rgba(2, 6, 23, 0.92)' }
-                      }
-                      className={`text-[7.4px] 2xl:text-[8.2px] font-black tracking-tight truncate ${
-                        !isHorizontalSide && hasTopCornerSibling
-                          ? 'max-w-[28px]'
-                          : 'max-w-[46px]'
-                      } ${
-                        isOwnerMe
-                          ? 'text-slate-950'
-                          : isCollectedMonopoly
-                            ? 'text-amber-100'
-                            : 'text-white'
-                      }`}
-                    >
-                      {ownerTagLabel}
-                    </span>
-                  )}
-                </span>
               )}
 
               {/* Branches / Holding Badge */}
@@ -1563,16 +1462,18 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
             const livingPlayers = gameState.players.filter(
               (p) => !p.isBankrupt
             );
-            const isLargeDesktopBoard = boardWidth >= 1000;
+            const isLargeDesktopBoard = boardWidth >= 1060;
             const soloSideHeadSize = isUltraCompact
               ? 18
               : isPhoneBoard
-                ? 22
+                ? 21
                 : isCompactBoard
-                  ? 27
-                  : isLargeDesktopBoard
-                    ? 38
-                    : 35;
+                  ? 25
+                  : isLaptopBoard
+                    ? 27
+                    : isLargeDesktopBoard
+                      ? 35
+                      : 31;
 
             // Group ONLY stationary pawns per cell so bystanders never twitch/shrink when a moving pawn hops past!
             const stationaryGroups: Record<number, Player[]> = {};
@@ -1654,12 +1555,12 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
                           : isPhoneBoard
                             ? 24
                             : isCompactBoard
-                              ? 29
+                              ? 28
                               : isLaptopBoard
-                                ? 33
+                                ? 31
                                 : isLargeDesktopBoard
-                                  ? 41
-                                  : 37;
+                                  ? 39
+                                  : 35;
                       } else if (groupCount === 2) {
                         headSize = soloSideHeadSize;
                         const dx = Math.min(
@@ -1793,12 +1694,12 @@ export const MonopolyBoard: React.FC<MonopolyBoardProps> = ({
                   }
 
                   const useCompactLabel = isPlMoving
-                    ? isPhoneBoard || isCompactBoard
+                    ? isPhoneBoard || isCompactBoard || isLaptopBoard
                     : isPhoneBoard ||
                       isCompactBoard ||
                       (pos.side === 'corner'
                         ? groupCount >= 4
-                        : groupCount >= 2);
+                        : isLaptopBoard || groupCount >= 2);
                   const showPawnLabel = isPlMe
                     ? boardWidth >= 330 && groupCount <= 2
                     : !isPhoneBoard;

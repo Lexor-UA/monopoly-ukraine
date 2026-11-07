@@ -139,7 +139,12 @@ export const MagnatBrandIcon: React.FC<{
 export const MagnatWordmark: React.FC<{
   size?: 'xs' | 'sm' | 'lg';
   showCountryBadge?: boolean;
-}> = ({ size = 'lg', showCountryBadge = false }) => {
+  ingotClassName?: string;
+}> = ({
+  size = 'lg',
+  showCountryBadge = false,
+  ingotClassName = 'inline-flex',
+}) => {
   const textClass =
     size === 'xs'
       ? 'text-[11.5px] tracking-[0.035em]'
@@ -188,7 +193,7 @@ export const MagnatWordmark: React.FC<{
 
         {/* Minted 3D 24K Gold UA Deed Ingot with Crisp Vector Lightning Bolt */}
         <span
-          className={`magnat-ua-ingot inline-flex items-center justify-center gap-1 font-display font-black leading-none tracking-[0.06em] shrink-0 ${ingotClass}`}
+          className={`magnat-ua-ingot ${ingotClassName} items-center justify-center gap-1 font-display font-black leading-none tracking-[0.06em] shrink-0 ${ingotClass}`}
         >
           <KabzdaBoltIcon variant="ingot" className={boltSizeClass} />
           <span>UA</span>
