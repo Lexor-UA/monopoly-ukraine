@@ -957,6 +957,9 @@ export const App: React.FC = () => {
             onSetGameMode={(gameMode: GameMode) =>
               emitWithAck('game:set_mode', { gameMode })
             }
+            onSetRoomVisibility={(isPublic: boolean) =>
+              emitWithAck('game:set_visibility', { isPublic })
+            }
             onSwitchTeam={(targetId?: string, teamId?: TeamId) =>
               emitWithAck('game:switch_team', { targetId, teamId })
             }

@@ -793,6 +793,39 @@ export class GameRoom {
     return { ok: true };
   }
 
+  public setLobbyVisibility(
+    requesterId: string,
+    isPublic?: boolean
+  ): { ok: boolean; error?: string } {
+    if (requesterId !== this.state.hostId) {
+      return {
+        ok: false,
+        error: 'Тільки власник кімнати може змінювати приватність столу',
+      };
+    }
+    if (this.state.status !== 'lobby') {
+      return {
+        ok: false,
+        error: 'Змінювати приватність можна лише в лобі перед стартом',
+      };
+    }
+    const nextPublic =
+      typeof isPublic === 'boolean' ? isPublic : !this.state.settings.isPublic;
+    if (Boolean(this.state.settings.isPublic) === nextPublic) {
+      return { ok: true };
+    }
+
+    this.state.settings.isPublic = nextPublic;
+    this.addLog(
+      'info',
+      nextPublic
+        ? '🌐 Стіл зроблено відкритим — тепер він відображається у загальному списку на сайті.'
+        : '🔒 Стіл зроблено закритим (приватним) — вхід тільки за кодом або прямим посиланням.'
+    );
+    this.emit();
+    return { ok: true };
+  }
+
   public switchPlayerTeam(
     requesterId: string,
     targetId?: string,

@@ -832,6 +832,12 @@ export default async (req: Request, _context: Context) => {
         case 'game:set_mode':
           opResult = room.setLobbyGameMode(playerId, body.gameMode as GameMode);
           break;
+        case 'game:set_visibility':
+          opResult = room.setLobbyVisibility(
+            playerId,
+            typeof body.isPublic === 'boolean' ? body.isPublic : undefined
+          );
+          break;
         case 'game:switch_team':
           opResult = room.switchPlayerTeam(
             playerId,

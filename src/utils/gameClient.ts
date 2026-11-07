@@ -1042,6 +1042,13 @@ export class HybridGameClient {
         this.syncLocalPublicRooms();
         return res;
       }
+      case 'game:set_visibility': {
+        const nextPublic =
+          typeof payload.isPublic === 'boolean' ? payload.isPublic : undefined;
+        const res = room.setLobbyVisibility(actorId, nextPublic);
+        this.syncLocalPublicRooms();
+        return res;
+      }
       case 'game:switch_team': {
         const targetId = payload.targetId ? String(payload.targetId) : undefined;
         const desiredTeam =

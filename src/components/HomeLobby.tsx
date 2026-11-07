@@ -84,6 +84,7 @@ interface HomeLobbyProps {
   onUpdateLobbyName: (name: string) => void;
   onAddBot: (teamId?: TeamId) => void;
   onSetGameMode: (gameMode: GameMode) => void;
+  onSetRoomVisibility: (isPublic: boolean) => void;
   onSwitchTeam: (targetId?: string, teamId?: TeamId) => void;
   onRemovePlayer: (targetId: string) => void;
   onStartGame: () => void;
@@ -116,6 +117,7 @@ export const HomeLobby: React.FC<HomeLobbyProps> = ({
   onUpdateLobbyName,
   onAddBot,
   onSetGameMode,
+  onSetRoomVisibility,
   onSwitchTeam,
   onRemovePlayer,
   onStartGame,
@@ -329,17 +331,46 @@ export const HomeLobby: React.FC<HomeLobbyProps> = ({
                       <Trophy className="w-3.5 h-3.5 text-amber-500" /> Класика (до 4)
                     </span>
                   )}
-                  <span className="text-xs font-bold text-[var(--text-secondary)] flex items-center gap-1">
-                    {gameState.settings.isPublic ? (
-                      <>
-                        <Globe className="w-3.5 h-3.5 text-blue-500" /> Відкрита кімната
-                      </>
-                    ) : (
-                      <>
-                        <Lock className="w-3.5 h-3.5 text-amber-500" /> Приватна кімната
-                      </>
-                    )}
-                  </span>
+                  {gameState.hostId === playerId ? (
+                    <div className="inline-flex items-center p-0.5 rounded-full bg-[var(--surface-subtle)] border border-[var(--border-strong)]">
+                      <button
+                        type="button"
+                        onClick={() => onSetRoomVisibility(true)}
+                        title="Зробити кімнату відкритою (видно всім на сайті)"
+                        className={`px-2.5 py-0.5 rounded-full text-[11px] font-extrabold inline-flex items-center gap-1 transition cursor-pointer ${
+                          gameState.settings.isPublic
+                            ? 'bg-emerald-500 text-slate-950 shadow-2xs'
+                            : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                        }`}
+                      >
+                        <Globe className="w-3 h-3" /> Відкрита
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onSetRoomVisibility(false)}
+                        title="Зробити кімнату закритою (вхід тільки за кодом або посиланням)"
+                        className={`px-2.5 py-0.5 rounded-full text-[11px] font-extrabold inline-flex items-center gap-1 transition cursor-pointer ${
+                          !gameState.settings.isPublic
+                            ? 'bg-amber-400 text-slate-950 shadow-2xs'
+                            : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                        }`}
+                      >
+                        <Lock className="w-3 h-3" /> Закрита
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="text-xs font-bold text-[var(--text-secondary)] flex items-center gap-1">
+                      {gameState.settings.isPublic ? (
+                        <>
+                          <Globe className="w-3.5 h-3.5 text-emerald-500" /> Відкрита кімната
+                        </>
+                      ) : (
+                        <>
+                          <Lock className="w-3.5 h-3.5 text-amber-500" /> Закрита кімната
+                        </>
+                      )}
+                    </span>
+                  )}
                 </div>
                 <h1 className="font-display font-extrabold text-2xl sm:text-3xl mt-2">
                   {gameState.settings.roomName}
@@ -1248,19 +1279,33 @@ export const HomeLobby: React.FC<HomeLobbyProps> = ({
                 </div>
 
                 <div className="space-y-3">
-                  <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2">
                     <button
                       disabled={roomBusy}
                       onClick={() => {
                         setCreateGameMode('classic');
+                        setIsPublic(true);
                         setShowCreateModal(true);
                       }}
-                      className="py-3.5 px-4 rounded-2xl bg-gradient-to-r from-[#0057B8] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#3B82F6] dark:bg-none dark:bg-white dark:text-slate-950 dark:hover:bg-amber-300 text-white font-display font-bold text-sm flex items-center justify-center gap-2 transition shadow-md disabled:opacity-60 cursor-pointer"
+                      title="Створити відкриту кімнату (з’явиться у списку на сайті)"
+                      className="py-3.5 px-3.5 rounded-2xl bg-gradient-to-r from-[#0057B8] to-[#2563EB] hover:from-[#1D4ED8] hover:to-[#3B82F6] dark:bg-none dark:bg-white dark:text-slate-950 dark:hover:bg-amber-300 text-white font-display font-bold text-xs sm:text-[13px] flex items-center justify-center gap-1.5 transition shadow-md disabled:opacity-60 cursor-pointer whitespace-nowrap"
                     >
-                      <Plus className="w-4 h-4" />
-                      {roomBusy
-                        ? 'Підключення кімнати...'
-                        : 'Створити онлайн-кімнату'}
+                      <Globe className="w-4 h-4 shrink-0" />
+                      <span>{roomBusy ? 'Підключення...' : 'Відкрита кімната'}</span>
+                    </button>
+
+                    <button
+                      disabled={roomBusy}
+                      onClick={() => {
+                        setCreateGameMode('classic');
+                        setIsPublic(false);
+                        setShowCreateModal(true);
+                      }}
+                      title="Створити закриту приватну кімнату (вхід тільки за кодом або посиланням)"
+                      className="py-3.5 px-3.5 rounded-2xl bg-slate-900/6 hover:bg-slate-900/12 dark:bg-white/10 dark:hover:bg-white/18 border border-[var(--border-strong)] text-[var(--text-primary)] font-display font-extrabold text-xs sm:text-[13px] flex items-center justify-center gap-1.5 transition shadow-2xs disabled:opacity-60 cursor-pointer whitespace-nowrap"
+                    >
+                      <Lock className="w-4 h-4 text-amber-500 dark:text-amber-300 shrink-0" />
+                      <span>Закрита кімната</span>
                     </button>
 
                     <button
@@ -1271,7 +1316,7 @@ export const HomeLobby: React.FC<HomeLobbyProps> = ({
                         setShowCreateModal(true);
                       }}
                       title="Створити командну онлайн-кімнату 2 на 2"
-                      className="py-3.5 px-4 rounded-2xl bg-amber-400/16 hover:bg-amber-400 hover:text-slate-950 border border-amber-400/45 text-amber-800 dark:text-amber-200 font-display font-extrabold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition shadow-2xs disabled:opacity-60 cursor-pointer whitespace-nowrap"
+                      className="py-3.5 px-3.5 rounded-2xl bg-amber-400/16 hover:bg-amber-400 hover:text-slate-950 border border-amber-400/45 text-amber-800 dark:text-amber-200 font-display font-extrabold text-xs sm:text-[13px] flex items-center justify-center gap-1.5 transition shadow-2xs disabled:opacity-60 cursor-pointer whitespace-nowrap"
                     >
                       <Handshake className="w-4 h-4 shrink-0" />
                       <span>2 на 2</span>
@@ -1868,25 +1913,49 @@ export const HomeLobby: React.FC<HomeLobbyProps> = ({
                 </div>
               </div>
 
-              <div className="space-y-2 pt-1">
-                <label className="flex items-center justify-between gap-3 p-3.5 rounded-xl bg-[var(--surface-subtle)] border border-[var(--border-glass)] cursor-pointer">
-                  <div>
-                    <div className="text-xs font-extrabold">
-                      Показувати у відкритому лобі
-                    </div>
-                    <div className="text-[11px] font-medium text-[var(--text-muted)]">
-                      {transportMode === 'p2p'
-                        ? 'Видно у вкладках цього браузера; з інших пристроїв вхід за посиланням або кодом'
-                        : 'Вимкніть для гри суто за приватним посиланням'}
-                    </div>
+              <div className="space-y-2.5 pt-1">
+                <div>
+                  <label className="block text-xs font-extrabold text-[var(--text-secondary)] mb-1.5">
+                    Доступ до кімнати
+                  </label>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setIsPublic(true)}
+                      className={`p-3 rounded-2xl border-2 text-left transition cursor-pointer ${
+                        isPublic
+                          ? 'border-emerald-500 bg-emerald-500/12 shadow-xs'
+                          : 'border-[var(--border-glass)] bg-[var(--surface-subtle)] hover:border-emerald-500/40'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 font-extrabold text-xs">
+                        <Globe className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                        <span>Відкрита</span>
+                      </div>
+                      <div className="text-[10.5px] font-medium text-[var(--text-muted)] mt-0.5 leading-snug">
+                        Видно у списку на сайті — вхід в 1 клік
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsPublic(false)}
+                      className={`p-3 rounded-2xl border-2 text-left transition cursor-pointer ${
+                        !isPublic
+                          ? 'border-amber-400 bg-amber-400/14 shadow-xs'
+                          : 'border-[var(--border-glass)] bg-[var(--surface-subtle)] hover:border-amber-400/50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 font-extrabold text-xs text-amber-800 dark:text-amber-300">
+                        <Lock className="w-3.5 h-3.5 shrink-0" />
+                        <span>Закрита</span>
+                      </div>
+                      <div className="text-[10.5px] font-medium text-[var(--text-muted)] mt-0.5 leading-snug">
+                        Тільки за кодом або посиланням
+                      </div>
+                    </button>
                   </div>
-                  <input
-                    type="checkbox"
-                    checked={isPublic}
-                    onChange={(e) => setIsPublic(e.target.checked)}
-                    className="w-4 h-4 accent-blue-600 shrink-0"
-                  />
-                </label>
+                </div>
 
                 <label className="flex items-center justify-between p-3.5 rounded-xl bg-[var(--surface-subtle)] border border-[var(--border-glass)] cursor-pointer">
                   <div>

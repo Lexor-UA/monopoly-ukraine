@@ -591,6 +591,19 @@ io.on('connection', (socket: Socket) => {
   );
 
   socket.on(
+    'game:set_visibility',
+    (payload: { isPublic?: boolean }, ack?: (res: unknown) => void) => {
+      const ctx = requireActiveSession(ack);
+      if (!ctx) return;
+      const res = ctx.room.setLobbyVisibility(ctx.playerId, payload?.isPublic);
+      if (res.ok) {
+        broadcastLobbyRooms();
+      }
+      ack?.(res);
+    }
+  );
+
+  socket.on(
     'game:switch_team',
     (
       payload: { targetId?: string; teamId?: TeamId },
