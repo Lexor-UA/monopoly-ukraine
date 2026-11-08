@@ -1927,7 +1927,7 @@ export const HomeLobby: React.FC<HomeLobbyProps> = ({
                 </div>
                 <p className="leading-relaxed font-medium">
                   <strong className="font-extrabold text-[var(--text-primary)]">
-                    КАБЗДА.UA — незалежна авторська онлайн-гра.
+                    КАБЗДА.UA — незалежна авторська українська онлайн-гра (автор та розробник: Олександр Спіян).
                   </strong>{' '}
                   Усі назви компаній, логотипи, ігрові картки, персонажі та події у
                   грі є оригінальними художніми образами. Проєкт є повністю
