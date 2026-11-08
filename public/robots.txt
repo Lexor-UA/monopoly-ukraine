@@ -4,6 +4,12 @@ Allow: /
 User-agent: Googlebot
 Allow: /
 
+User-agent: Googlebot-Image
+Allow: /
+
+User-agent: Google-Favicon
+Allow: /
+
 User-agent: Google-Extended
 Allow: /
 
@@ -29,3 +35,4 @@ User-agent: TelegramBot
 Allow: /
 
 Sitemap: https://www.kabzda.com.ua/sitemap.xml
+
